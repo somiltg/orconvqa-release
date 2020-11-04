@@ -718,7 +718,7 @@ parser.add_argument("--reader_model_name_or_path", default='bert-base-uncased', 
                     help="reader model name")
 parser.add_argument("--reader_model_type", default='bert', type=str, required=False,
                     help="reader model type")
-parser.add_argument("--reader_toenizer_name", default="bert-base-uncased", type=str,
+parser.add_argument("--reader_tokenizer_name", default="bert-base-uncased", type=str,
                     help="Pretrained tokenizer name or path if not the same as model_name")
 parser.add_argument("--reader_cache_dir", default="../reader_cache_dir", type=str,
                     help="Where do you want to store the pre-trained models downloaded from s3")
