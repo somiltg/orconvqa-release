@@ -927,11 +927,12 @@ class AlbertForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
             return model, loading_info
 
         return model
-    
+
+
 class Pipeline(nn.Module):
     def __init__(self):
-        super(Pipeline, self).__init__()
         logger.info("bhai m constructor hu")
+        super(Pipeline, self).__init__()
         self.reader = None
         self.retriever = None
 
