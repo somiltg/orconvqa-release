@@ -803,7 +803,7 @@ retriever_config_class, retriever_model_class, retriever_tokenizer_class = MODEL
 retriever_config = retriever_config_class.from_pretrained(args.retrieve_checkpoint)
 
 
-print("will load pretrained retriever")
+logger.info("will load pretrained retriever")
 # load pretrained retriever
 retriever_tokenizer = retriever_tokenizer_class.from_pretrained(args.retrieve_tokenizer_dir)
 retriever_model = retriever_model_class.from_pretrained(args.retrieve_checkpoint, force_download=True)
@@ -812,7 +812,7 @@ model.retriever = retriever_model
 # do not need and do not tune passage encoder
 model.retriever.passage_encoder = None
 model.retriever.passage_proj = None
-print("0 load pretrained retriever")
+logger.info("0 load pretrained retriever")
 
 args.reader_model_type = args.reader_model_type.lower()
 reader_config_class, reader_model_class, reader_tokenizer_class = MODEL_CLASSES['reader']
@@ -823,7 +823,7 @@ reader_config.num_qa_labels = 2
 reader_config.num_retrieval_labels = 2
 reader_config.qa_loss_factor = args.qa_loss_factor
 reader_config.retrieval_loss_factor = args.retrieval_loss_factor
-print("1 load pretrained retriever")
+logger.info("1 load pretrained retriever")
 
 reader_tokenizer = reader_tokenizer_class.from_pretrained(args.reader_tokenizer_name if args.reader_tokenizer_name else args.reader_model_name_or_path,
                                                           do_lower_case=args.do_lower_case,
@@ -836,7 +836,7 @@ reader_model = reader_model_class.from_pretrained(args.reader_model_name_or_path
 
 model.reader = reader_model
 
-print("set load pretrained retriever")
+logger.info("set load pretrained retriever")
 
 if args.local_rank == 0:
     # Make sure only the first process in distributed training will download model & vocab
