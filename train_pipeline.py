@@ -799,7 +799,9 @@ if args.local_rank not in [-1, 0]:
 model = Pipeline()
 
 args.retriever_model_type = args.retriever_model_type.lower()
+logger.info("retriever model")
 retriever_config_class, retriever_model_class, retriever_tokenizer_class = MODEL_CLASSES['retriever']
+logger.info("take pretrained model")
 retriever_config = retriever_config_class.from_pretrained(args.retrieve_checkpoint)
 
 
