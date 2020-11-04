@@ -787,6 +787,8 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message
 logger.warning("Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s",
                args.local_rank, device, args.n_gpu, bool(args.local_rank != -1), args.fp16)
 
+
+logger.info("yha to aaja")
 # Set seed
 set_seed(args)
 
@@ -798,6 +800,7 @@ if args.local_rank not in [-1, 0]:
 
 model = Pipeline()
 
+logger.info("ab yha pahuch")
 args.retriever_model_type = args.retriever_model_type.lower()
 logger.info("retriever model")
 retriever_config_class, retriever_model_class, retriever_tokenizer_class = MODEL_CLASSES['retriever']
