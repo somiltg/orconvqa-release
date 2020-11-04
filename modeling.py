@@ -931,7 +931,7 @@ class AlbertForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
 class Pipeline(nn.Module):
     def __init__(self):
         super(Pipeline, self).__init__()
-        
+        logger.info("bhai m constructor hu")
         self.reader = None
         self.retriever = None
 
