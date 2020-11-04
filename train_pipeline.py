@@ -565,32 +565,32 @@ parser = argparse.ArgumentParser()
 
 # arguments shared by the retriever and reader
 
-parser.add_argument("--train_file", default='/mnt/scratch/chenqu/orconvqa/v5/quac_canard/preprocessed/train.txt',
+parser.add_argument("--train_file", default='../data/preprocessed/train.txt',
                     type=str, required=False,
                     help="open retrieval quac json for training. ")
-parser.add_argument("--dev_file", default='/mnt/scratch/chenqu/orconvqa/v5/quac_canard/preprocessed/dev.txt',
+parser.add_argument("--dev_file", default='../data/preprocessed/dev.txt',
                     type=str, required=False,
                     help="open retrieval quac json for predictions.")
-parser.add_argument("--test_file", default='/mnt/scratch/chenqu/orconvqa/v5/quac_canard/preprocessed/test.txt',
+parser.add_argument("--test_file", default='../data/preprocessed/test.txt',
                     type=str, required=False,
                     help="open retrieval quac json for predictions.")
-parser.add_argument("--orig_dev_file", default='/mnt/scratch/chenqu/orconvqa/v5/quac_canard/quac/dev.txt',
+parser.add_argument("--orig_dev_file", default='../data/quac_format/dev.txt',
                     type=str, required=False,
                     help="open retrieval quac json for predictions.")
-parser.add_argument("--orig_test_file", default='/mnt/scratch/chenqu/orconvqa/v5/quac_canard/quac/test.txt',
+parser.add_argument("--orig_test_file", default='../data/quac_format/test.txt',
                     type=str, required=False,
                     help="original quac json for evaluation.")
-parser.add_argument("--qrels", default='/mnt/scratch/chenqu/orconvqa/v5/retrieval/qrels.txt', type=str, required=False,
+parser.add_argument("--qrels", default='../data/qrels.txt', type=str, required=False,
                     help="qrels to evaluate open retrieval")
 # parser.add_argument("--blocks_path", default='/mnt/scratch/chenqu/orconvqa/v3/all/all_blocks.txt', type=str, required=False,
 #                     help="all blocks text")
-parser.add_argument("--blocks_path", default='/mnt/scratch/chenqu/orconvqa/v3/all/all_blocks.txt', type=str, required=False,
+parser.add_argument("--blocks_path", default='../data/all_blocks.txt', type=str, required=False,
                     help="all blocks text")
-parser.add_argument("--passage_reps_path", default='/mnt/scratch/chenqu/orconvqa/v5/passage_reps/combined/passage_reps.pkl',
+parser.add_argument("--passage_reps_path", default='../data/passage_reps.pkl',
                     type=str, required=False, help="passage representations")
-parser.add_argument("--passage_ids_path", default='/mnt/scratch/chenqu/orconvqa/v5/passage_reps/combined/passage_ids.pkl',
+parser.add_argument("--passage_ids_path", default='../data/passage_ids.pkl',
                     type=str, required=False, help="passage ids")
-parser.add_argument("--output_dir", default='/mnt/scratch/chenqu/orconvqa_output/release_test', type=str, required=False,
+parser.add_argument("--output_dir", default='../output', type=str, required=False,
                     help="The output directory where the model checkpoints and predictions will be written.")
 parser.add_argument("--load_small", default=True, type=str2bool, required=False,
                     help="whether to load just a small portion of data during development")
@@ -681,13 +681,13 @@ parser.add_argument("--retriever_model_name_or_path", default='albert-base-v1', 
                     help="retriever model name")
 parser.add_argument("--retriever_tokenizer_name", default="albert-base-v1", type=str,
                     help="Pretrained tokenizer name or path if not the same as model_name")
-parser.add_argument("--retriever_cache_dir", default="/mnt/scratch/chenqu/huggingface_cache/albert_v1/", type=str,
+parser.add_argument("--retriever_cache_dir", default=None, type=str,
                     help="Where do you want to store the pre-trained models downloaded from s3")
 parser.add_argument("--retrieve_checkpoint",
-                    default='/mnt/scratch/chenqu/orconvqa_output/retriever_33/checkpoint-5917', type=str,
+                    default='../retriever_checkpoint/checkpoint-5917', type=str,
                     help="generate query/passage representations with this checkpoint")
 parser.add_argument("--retrieve_tokenizer_dir",
-                    default='/mnt/scratch/chenqu/orconvqa_output/retriever_33/', type=str,
+                    default='../retriever_checkpoint', type=str,
                     help="dir that contains tokenizer files")
 
 parser.add_argument("--given_query", default=True, type=str2bool,
