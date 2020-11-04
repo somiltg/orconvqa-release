@@ -129,16 +129,19 @@ def train(args, train_dataset, model, retriever_tokenizer, reader_tokenizer):
 
     # multi-gpu training (should be after apex fp16 initialization)
     if args.n_gpu > 1:
+        print("n gpu > 1")
         model = torch.nn.DataParallel(model)
         # model.to(f'cuda:{model.device_ids[0]}')
 
     # Distributed training (should be after apex fp16 initialization)
     if args.local_rank != -1:
+        print("local rank not -1")
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
                                                           output_device=args.local_rank,
                                                           find_unused_parameters=True)
 
     # Train!
+    print("train start here")
     logger.info("***** Running training *****")
     logger.info("  Num examples = %d", len(train_dataset))
     logger.info("  Num Epochs = %d", args.num_train_epochs)
