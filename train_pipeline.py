@@ -797,6 +797,7 @@ if args.local_rank not in [-1, 0]:
     # Make sure only the first process in distributed training will download model & vocab
     torch.distributed.barrier()
 
+logger.info("before pipeline")
 
 model = Pipeline()
 
