@@ -681,7 +681,7 @@ parser.add_argument("--retriever_model_name_or_path", default='albert-base-v1', 
                     help="retriever model name")
 parser.add_argument("--retriever_tokenizer_name", default="albert-base-v1", type=str,
                     help="Pretrained tokenizer name or path if not the same as model_name")
-parser.add_argument("--retriever_cache_dir", default=None, type=str,
+parser.add_argument("--retriever_cache_dir", default="../retriever_cache_dir", type=str,
                     help="Where do you want to store the pre-trained models downloaded from s3")
 parser.add_argument("--retrieve_checkpoint",
                     default='../retriever_checkpoint/checkpoint-5917', type=str,
@@ -720,7 +720,7 @@ parser.add_argument("--reader_model_type", default='bert', type=str, required=Fa
                     help="reader model type")
 parser.add_argument("--reader_toenizer_name", default="bert-base-uncased", type=str,
                     help="Pretrained tokenizer name or path if not the same as model_name")
-parser.add_argument("--reader_cache_dir", default="/mnt/scratch/chenqu/huggingface_cache/", type=str,
+parser.add_argument("--reader_cache_dir", default="../reader_cache_dir", type=str,
                     help="Where do you want to store the pre-trained models downloaded from s3")
 parser.add_argument("--reader_max_seq_length", default=512, type=int,
                     help="The maximum total input sequence length after WordPiece tokenization. Sequences "
