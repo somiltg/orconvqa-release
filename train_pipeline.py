@@ -718,7 +718,7 @@ parser.add_argument("--reader_model_name_or_path", default='bert-base-uncased', 
                     help="reader model name")
 parser.add_argument("--reader_model_type", default='bert', type=str, required=False,
                     help="reader model type")
-parser.add_argument("--reader_tokenizer_name", default="bert-base-uncased", type=str,
+parser.add_argument("--reader_toenizer_name", default="bert-base-uncased", type=str,
                     help="Pretrained tokenizer name or path if not the same as model_name")
 parser.add_argument("--reader_cache_dir", default="/mnt/scratch/chenqu/huggingface_cache/", type=str,
                     help="Where do you want to store the pre-trained models downloaded from s3")
@@ -802,6 +802,8 @@ args.retriever_model_type = args.retriever_model_type.lower()
 retriever_config_class, retriever_model_class, retriever_tokenizer_class = MODEL_CLASSES['retriever']
 retriever_config = retriever_config_class.from_pretrained(args.retrieve_checkpoint)
 
+
+print("will load pretrained retriever")
 # load pretrained retriever
 retriever_tokenizer = retriever_tokenizer_class.from_pretrained(args.retrieve_tokenizer_dir)
 retriever_model = retriever_model_class.from_pretrained(args.retrieve_checkpoint, force_download=True)
@@ -810,6 +812,7 @@ model.retriever = retriever_model
 # do not need and do not tune passage encoder
 model.retriever.passage_encoder = None
 model.retriever.passage_proj = None
+print("0 load pretrained retriever")
 
 args.reader_model_type = args.reader_model_type.lower()
 reader_config_class, reader_model_class, reader_tokenizer_class = MODEL_CLASSES['reader']
@@ -820,6 +823,7 @@ reader_config.num_qa_labels = 2
 reader_config.num_retrieval_labels = 2
 reader_config.qa_loss_factor = args.qa_loss_factor
 reader_config.retrieval_loss_factor = args.retrieval_loss_factor
+print("1 load pretrained retriever")
 
 reader_tokenizer = reader_tokenizer_class.from_pretrained(args.reader_tokenizer_name if args.reader_tokenizer_name else args.reader_model_name_or_path,
                                                           do_lower_case=args.do_lower_case,
@@ -831,6 +835,8 @@ reader_model = reader_model_class.from_pretrained(args.reader_model_name_or_path
                                                   cache_dir=args.reader_cache_dir if args.reader_cache_dir else None)
 
 model.reader = reader_model
+
+print("set load pretrained retriever")
 
 if args.local_rank == 0:
     # Make sure only the first process in distributed training will download model & vocab
