@@ -57,12 +57,6 @@ MODEL_CLASSES = {
     'retriever': (AlbertConfig, AlbertForRetrieverOnlyPositivePassage, AlbertTokenizer),
 }
 
-HAM_BASED_MODEL_CLASSES = {
-    'reader': (BertConfig, BertForOrconvqaGlobal, BertTokenizer),
-    'retriever': (AlbertConfig(type_vocab_size=11), AlbertForRetrieverOnlyPositivePassage, AlbertTokenizer),
-}
-
-
 # In[3]:
 
 
@@ -756,7 +750,9 @@ parser.add_argument("--top_k_for_reader", default=5, type=int,
                     help="update the reader with top k passages")
 parser.add_argument("--use_rerank_prob", default=True, type=str2bool,
                     help="include rerank probs in final answer ranking")
-parser.add_argument("--run_ham_model", default=False, type=str2bool, help="run history based attention model or not")
+parser.add_argument("--enable_retrieval_history_selection", default=False, type=str2bool, help="run history based attention model or not for retriever")
+parser.add_argument("--max_considered_history_turns", default=11, type=int, help="we only consider k history turns "
+                                                                                     "that immediately proceed the current turn, when generating preprocessed features,")
 
 args, unknown = parser.parse_known_args()
 
@@ -809,10 +805,16 @@ if args.local_rank not in [-1, 0]:
     torch.distributed.barrier()
 
 model = Pipeline()
+args.max_considered_history_turns = args.max_considered_history_turns()
+
+HAM_BASED_MODEL_CLASSES = {
+    'reader': (BertConfig, BertForOrconvqaGlobal, BertTokenizer),
+    'retriever': (AlbertConfig(type_vocab_size=args.max_considered_history_turns), AlbertForRetrieverOnlyPositivePassage, AlbertTokenizer),
+}
 
 args.retriever_model_type = args.retriever_model_type.lower()
-args.run_ham_model = args.run_ham_model()
-if args.run_ham_model:
+args.enable_retrieval_history_selection = args.enable_retrieval_history_selection()
+if args.enable_retrieval_history_selection:
     retriever_config_class, retriever_model_class, retriever_tokenizer_class = HAM_BASED_MODEL_CLASSES['retriever']
     logger.info("take pretrained model")
     retriever_config = retriever_config_class.from_pretrained(args.retrieve_checkpoint)
