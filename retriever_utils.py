@@ -326,7 +326,7 @@ def retriever_convert_example_to_feature(example, tokenizer,
 
     # Token Ids should encode conversational position information i.e. use a different embedding per turn.
     if example.sub_guid is not None:
-        token_type_ids *= example.sub_guid
+        token_type_ids = [example.sub_guid*item for item in token_type_ids]
 
     # Zero-pad up to the sequence length.
     padding_length = max_length - len(input_ids)
