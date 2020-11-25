@@ -346,7 +346,8 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
                            is_pretraining=args.is_pretraining,
                            given_query=True,
                            given_passage=False,
-                           include_first_for_retriever=args.include_first_for_retriever)
+                           include_first_for_retriever=args.include_first_for_retriever,
+                           history_attention_selection_enabled_for_retriever=args.enable_retrieval_history_selection)
 
     if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:
         os.makedirs(args.output_dir)
@@ -795,7 +796,6 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message
 logger.warning("Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s",
                args.local_rank, device, args.n_gpu, bool(args.local_rank != -1), args.fp16)
 
-logger.info("yha to aaja")
 # Set seed
 set_seed(args)
 
@@ -810,6 +810,11 @@ HAM_BASED_MODEL_CLASSES = {
     'reader': (BertConfig, BertForOrconvqaGlobal, BertTokenizer),
     'retriever': (AlbertConfig(type_vocab_size=args.max_considered_history_turns), AlbertForRetrieverOnlyPositivePassage, AlbertTokenizer),
 }
+args.retriever_model_type = args.retriever_model_type.lower()
+logger.info("retriever model")
+retriever_config_class, retriever_model_class, retriever_tokenizer_class = MODEL_CLASSES['retriever']
+logger.info("take pretrained model")
+retriever_config = retriever_config_class.from_pretrained(args.retrieve_checkpoint)
 
 args.retriever_model_type = args.retriever_model_type.lower()
 if args.enable_retrieval_history_selection:
@@ -936,7 +941,8 @@ if args.do_train:
                                  is_pretraining=args.is_pretraining,
                                  given_query=True,
                                  given_passage=False,
-                                 include_first_for_retriever=args.include_first_for_retriever)
+                                 include_first_for_retriever=args.include_first_for_retriever,
+                                 history_attention_selection_enabled_for_retriever=args.enable_retrieval_history_selection)
     global_step, tr_loss = train(
         args, train_dataset, model, retriever_tokenizer, reader_tokenizer)
     logger.info(" global_step = %s, average loss = %s",

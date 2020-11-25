@@ -28,9 +28,13 @@ class RetrieverInputExample(object):
         Only must be specified for sequence pair tasks.
         label: (Optional) string. The label of the example. This should be
         specified for train and dev examples, but not for test examples.
+        sub_guid: (Optional) string. Identifier of a portion of the example e.g. turn number.
+        identifier.
     """
-    def __init__(self, guid, text_a, text_b=None, label=None):
+
+    def __init__(self, guid, text_a, text_b=None, label=None, sub_guid=None):
         self.guid = guid
+        self.sub_guid = sub_guid
         self.text_a = text_a
         self.text_b = text_b
         self.label = label
@@ -84,12 +88,10 @@ class RetrieverDataset(Dataset):
                  load_small, history_num, prepend_history_questions=True, 
                  prepend_history_answers=False,
                  query_max_seq_length=128, passage_max_seq_length=384,
-                 is_pretraining=False, given_query=False, 
-                 given_passage=False, only_positive_passage=True, 
-                 include_first_for_retriever=False):
-        # Todo: prepand_history_questions: False
-        # Todo: preprocessing with a flag
-        
+                 is_pretraining=False, given_query=False,
+                 given_passage=False, only_positive_passage=True,
+                 include_first_for_retriever=False,
+                 history_attention_selection_enabled_for_retriever=False):
         self._filename = filename
         self._tokenizer = tokenizer
         self._load_small = load_small
@@ -98,7 +100,8 @@ class RetrieverDataset(Dataset):
         self._passage_max_seq_length = passage_max_seq_length
         self._prepend_history_questions = prepend_history_questions
         self._prepend_history_answers = prepend_history_answers
-        
+        self._history_attention_selection_enabled_for_retriever = history_attention_selection_enabled_for_retriever
+
         # if given query:
             # if pretraining: using rewrite as question
             # else: using concat of question
@@ -132,45 +135,66 @@ class RetrieverDataset(Dataset):
         return_feature_dict = {}
         
         if self._given_query:
+            query_feature_dict = {'qid': qas_id}
             if self._is_pretraining:
-                question_text = question_text_for_retriever = entry["rewrite"]
+                # Retriever pretraining
+                question_text_for_retriever = entry["rewrite"]
+                query_example = RetrieverInputExample(guid=qas_id, text_a=question_text_for_retriever)
+                query_feature = retriever_convert_example_to_feature(query_example, self._tokenizer,
+                                                                     max_length=self._query_max_seq_length)
             else:
+                # Concurrent learning
                 orig_question_text = entry["question"]
                 history = entry['history']
-                question_text_list = []
-                if self._history_num > 0:
-                    for turn in history[- self._history_num :]:
+
+                def get_prepended_history_question(selected_history, current_question_text, include_first=True):
+                    question_text_list = []
+                    for turn in selected_history:
                         if self._prepend_history_questions:
                             question_text_list.append(turn['question'])
                         if self._prepend_history_answers:
                             question_text_list.append(turn['answer']['text'])
-                question_text_list.append(orig_question_text)
-                question_text = ' [SEP] '.join(question_text_list)
-                question_text_for_retriever = question_text
-    
-                # include the first question in addition to history_num for retriever (not reader)
-                if self._include_first_for_retriever and len(history) > 0:
-                    first_question = history[0]['question']
-                    if first_question != question_text_list[0]:                    
-                        question_text_for_retriever = first_question + ' [SEP] ' + question_text
-                        
-                # print('question_text_for_retriever', question_text_for_retriever)
-                # print('question_text', question_text)
-                        
-            # print('question_text_for_retriever', question_text_for_retriever)
-            query_example = RetrieverInputExample(guid=qas_id, text_a=question_text_for_retriever)
-            query_feature = retriever_convert_example_to_feature(query_example, self._tokenizer, 
-                                                                 max_length=self._query_max_seq_length)
-            query_feature_dict = {'query_input_ids': np.asarray(query_feature.input_ids), 
-                                  'query_token_type_ids': np.asarray(query_feature.token_type_ids), 
-                                  'query_attention_mask': np.asarray(query_feature.attention_mask), 
-                                  'qid': qas_id}
-            # during fine-tuning, we also return the query text for training reader
-            if not self._is_pretraining:
-                query_feature_dict['question_text'] = question_text
+                    question_text_list.append(current_question_text)
+                    question_text = ' [SEP] '.join(question_text_list)
+                    if include_first and len(history) > 0:
+                        first_question = history[0]['question']
+                        if first_question != question_text_list[0]:
+                            question_text = first_question + ' [SEP] ' + question_text
+                    return question_text
+
+                # During fine-tuning, we also return the query text for training reader.
+                # Do not include the first question in addition to history_num for reader.
+                # History attention selection would not impact reader currently.
+                history_window = history[- self._history_num:] if self._history_num > 0 else []
+                query_feature_dict['question_text'] = get_prepended_history_question(history_window,
+                                                                                     orig_question_text, False)
                 query_feature_dict['answer_text'] = entry['answer']['text']
                 query_feature_dict['answer_start'] = entry['answer']['answer_start']
-            
+                if self._history_attention_selection_enabled_for_retriever:
+                    # Use selection mechanism, form a list of features for each conversation turn
+                    input_ids, token_type_ids, attention_mask = [], [], []
+                    for turn_num in range(len(history)):
+                        augmented_turn_text = get_prepended_history_question([], history[turn_num]['question'])
+                        turn_example = RetrieverInputExample(guid=qas_id, text_a=orig_question_text,
+                                                             text_b=augmented_turn_text,
+                                                             sub_guid=len(history) - turn_num)
+                        turn_query_feature = retriever_convert_example_to_feature(turn_example, self._tokenizer,
+                                                                             max_length=self._query_max_seq_length)
+                        input_ids.append(turn_query_feature.input_ids)
+                        token_type_ids.append(turn_query_feature.token_type_ids)
+                        attention_mask.append(turn_query_feature.attention_mask)
+                    query_feature = RetrieverInputFeatures(input_ids, token_type_ids, attention_mask, None)
+
+                else:
+                    # Use the prepending technique
+                    question_text_for_retriever = get_prepended_history_question(
+                        history[- self._history_num:] if self._history_num > 0 else [], orig_question_text)
+                    query_example = RetrieverInputExample(guid=qas_id, text_a=question_text_for_retriever)
+                    query_feature = retriever_convert_example_to_feature(query_example, self._tokenizer,
+                                                                         max_length=self._query_max_seq_length)
+            query_feature_dict['query_input_ids'] = query_feature.input_ids
+            query_feature_dict['query_token_type_ids'] = query_feature.token_type_ids
+            query_feature_dict['query_attention_mask'] = query_feature.attention_mask
             return_feature_dict.update(query_feature_dict)
         
         if self._given_passage:
@@ -188,9 +212,9 @@ class RetrieverDataset(Dataset):
 
                 passage_feature = retriever_convert_example_to_feature(passage_example, self._tokenizer, 
                                                                        max_length=self._passage_max_seq_length)
-                passage_feature_dict = {'passage_input_ids': np.asarray(passage_feature.input_ids), 
-                                 'passage_token_type_ids': np.asarray(passage_feature.token_type_ids), 
-                                 'passage_attention_mask': np.asarray(passage_feature.attention_mask),
+                passage_feature_dict = {'passage_input_ids': passage_feature.input_ids,
+                                 'passage_token_type_ids': passage_feature.token_type_ids,
+                                 'passage_attention_mask': passage_feature.attention_mask,
                                  'retrieval_label': passage_feature.label, 
                                  'example_id': example_id}
                 return_feature_dict.update(passage_feature_dict)
@@ -207,9 +231,9 @@ class RetrieverDataset(Dataset):
 
                     passage_feature = retriever_convert_example_to_feature(passage_example, self._tokenizer, 
                                                                            max_length=self._passage_max_seq_length)
-                    batch_feature = {'passage_input_ids': np.asarray(passage_feature.input_ids), 
-                                     'passage_token_type_ids': np.asarray(passage_feature.token_type_ids), 
-                                     'passage_attention_mask': np.asarray(passage_feature.attention_mask),
+                    batch_feature = {'passage_input_ids': passage_feature.input_ids,
+                                     'passage_token_type_ids': passage_feature.token_type_ids,
+                                     'passage_attention_mask': passage_feature.attention_mask,
                                      'retrieval_label': passage_feature.label, 
                                      'example_id': example_id}
 
@@ -226,7 +250,8 @@ class RetrieverDataset(Dataset):
                 return_feature_dict.update(collated)
 
         return return_feature_dict
-    
+
+
 class GenPassageRepDataset(Dataset):
     def __init__(self, filename, tokenizer, 
                  load_small, passage_max_seq_length=386):
@@ -256,9 +281,9 @@ class GenPassageRepDataset(Dataset):
         passage_example = RetrieverInputExample(guid=example_id, text_a=passage)
         passage_feature = retriever_convert_example_to_feature(passage_example, self._tokenizer, 
                                                                max_length=self._passage_max_seq_length)
-        batch_feature = {'passage_input_ids': np.asarray(passage_feature.input_ids), 
-                         'passage_token_type_ids': np.asarray(passage_feature.token_type_ids), 
-                         'passage_attention_mask': np.asarray(passage_feature.attention_mask),
+        batch_feature = {'passage_input_ids': passage_feature.input_ids,
+                         'passage_token_type_ids': passage_feature.token_type_ids,
+                         'passage_attention_mask': passage_feature.attention_mask,
                          'example_id': example_id}
 
         return batch_feature
@@ -287,7 +312,6 @@ def retriever_convert_example_to_feature(example, tokenizer,
         a list of task-specific ``InputFeatures`` which can be fed to the model.
     """
 
-
     inputs = tokenizer.encode_plus(
         example.text_a,
         example.text_b,
@@ -299,6 +323,10 @@ def retriever_convert_example_to_feature(example, tokenizer,
     # The mask has 1 for real tokens and 0 for padding tokens. Only real
     # tokens are attended to.
     attention_mask = [1 if mask_padding_with_zero else 0] * len(input_ids)
+
+    # Token Ids should encode conversational position information i.e. use a different embedding per turn.
+    if example.sub_guid is not None:
+        token_type_ids *= example.sub_guid
 
     # Zero-pad up to the sequence length.
     padding_length = max_length - len(input_ids)
@@ -315,17 +343,18 @@ def retriever_convert_example_to_feature(example, tokenizer,
     assert len(attention_mask) == max_length, "Error with input length {} vs {}".format(len(attention_mask), max_length)
     assert len(token_type_ids) == max_length, "Error with input length {} vs {}".format(len(token_type_ids), max_length)
 
-    if False:
-        logger.info("*** Example ***")
-        logger.info("guid: %s" % (example.guid))
-        logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
-        logger.info("attention_mask: %s" % " ".join([str(x) for x in attention_mask]))
-        logger.info("token_type_ids: %s" % " ".join([str(x) for x in token_type_ids]))
-        logger.info("label: %s" % (example.label))
+    logger.info("*** Example ***")
+    logger.info("guid: %s" % (example.guid))
+    if example.sub_guid is not None:
+        logger.info("sub_guid: %s" % (example.sub_guid))
+    logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
+    logger.info("attention_mask: %s" % " ".join([str(x) for x in attention_mask]))
+    logger.info("token_type_ids: %s" % " ".join([str(x) for x in token_type_ids]))
+    logger.info("label: %s" % (example.label))
 
-    feature = RetrieverInputFeatures(input_ids=input_ids,
-                          attention_mask=attention_mask,
-                          token_type_ids=token_type_ids,
+    feature = RetrieverInputFeatures(input_ids=np.asarray(input_ids),
+                          attention_mask=np.asarray(attention_mask),
+                          token_type_ids=np.asarray(token_type_ids),
                           label=example.label)
 
     return feature
