@@ -347,7 +347,7 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
                            given_query=True,
                            given_passage=False,
                            include_first_for_retriever=args.include_first_for_retriever,
-                           history_attention_selection_enabled_for_retriever=True)
+                           history_attention_selection_enabled_for_retriever=args.enable_retrieval_history_selection)
 
     if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:
         os.makedirs(args.output_dir)
@@ -944,7 +944,7 @@ if args.do_train:
                                  given_query=True,
                                  given_passage=False,
                                  include_first_for_retriever=args.include_first_for_retriever,
-                                 history_attention_selection_enabled_for_retriever=True)
+                                 history_attention_selection_enabled_for_retriever=args.enable_retrieval_history_selection)
     global_step, tr_loss = train(
         args, train_dataset, model, retriever_tokenizer, reader_tokenizer)
     logger.info(" global_step = %s, average loss = %s",
