@@ -42,7 +42,7 @@ from utils import (LazyQuacDatasetGlobal, RawResult,
                    write_predictions, write_final_predictions,
                    get_retrieval_metrics, gen_reader_features)
 from retriever_utils import RetrieverDataset
-from modeling import Pipeline, AlbertForRetrieverOnlyPositivePassage, BertForOrconvqaGlobal
+from modeling import Pipeline, AlbertForRetrieverOnlyPositivePassage, BertForOrconvqaGlobal, AlbertWithHAMForRetrieverOnlyPositivePassage
 from scorer import quac_eval
 
 # In[2]:
@@ -808,40 +808,32 @@ model = Pipeline()
 
 HAM_BASED_MODEL_CLASSES = {
     'reader': (BertConfig, BertForOrconvqaGlobal, BertTokenizer),
-    'retriever': (AlbertConfig(type_vocab_size=args.max_considered_history_turns), AlbertForRetrieverOnlyPositivePassage, AlbertTokenizer),
+    'retriever': (AlbertConfig(type_vocab_size=args.max_considered_history_turns), AlbertWithHAMForRetrieverOnlyPositivePassage, AlbertTokenizer),
 }
 args.retriever_model_type = args.retriever_model_type.lower()
+
+
+args.retriever_model_type = args.retriever_model_type.lower()
 logger.info("retriever model")
-retriever_config_class, retriever_model_class, retriever_tokenizer_class = MODEL_CLASSES['retriever']
+if args.enable_retrieval_history_selection:
+    logger.info("Using HAM based retriever model")
+    retriever_config_class, retriever_model_class, retriever_tokenizer_class = HAM_BASED_MODEL_CLASSES['retriever']
+else:
+    logger.info("Using prepending history based retriever model")
+    retriever_config_class, retriever_model_class, retriever_tokenizer_class = MODEL_CLASSES['retriever']
+
 logger.info("take pretrained model")
 retriever_config = retriever_config_class.from_pretrained(args.retrieve_checkpoint)
 
-args.retriever_model_type = args.retriever_model_type.lower()
-if args.enable_retrieval_history_selection:
-    retriever_config_class, retriever_model_class, retriever_tokenizer_class = HAM_BASED_MODEL_CLASSES['retriever']
-    logger.info("take pretrained model")
-    retriever_config = retriever_config_class.from_pretrained(args.retrieve_checkpoint)
-
-    logger.info("will load pretrained retriever")
-    # load pretrained retriever
-    retriever_tokenizer = retriever_tokenizer_class.from_pretrained(args.retrieve_tokenizer_dir)
-    retriever_model = retriever_model_class.from_pretrained(args.retrieve_checkpoint, force_download=True)
-else:
-    retriever_config_class, retriever_model_class, retriever_tokenizer_class = MODEL_CLASSES['retriever']
-    logger.info("take pretrained model")
-    retriever_config = retriever_config_class.from_pretrained(args.retrieve_checkpoint)
-
-    logger.info("will load pretrained retriever")
-    # load pretrained retriever
-    retriever_tokenizer = retriever_tokenizer_class.from_pretrained(args.retrieve_tokenizer_dir)
-    retriever_model = retriever_model_class.from_pretrained(args.retrieve_checkpoint, force_download=True)
-
+logger.info("will load pretrained retriever")
+# load pretrained retriever
+retriever_tokenizer = retriever_tokenizer_class.from_pretrained(args.retrieve_tokenizer_dir)
+retriever_model = retriever_model_class.from_pretrained(args.retrieve_checkpoint, force_download=True)
 
 model.retriever = retriever_model
 # do not need and do not tune passage encoder
 model.retriever.passage_encoder = None
 model.retriever.passage_proj = None
-logger.info("0 load pretrained retriever")
 
 args.reader_model_type = args.reader_model_type.lower()
 reader_config_class, reader_model_class, reader_tokenizer_class = MODEL_CLASSES['reader']
