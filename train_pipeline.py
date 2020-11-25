@@ -805,7 +805,6 @@ if args.local_rank not in [-1, 0]:
     torch.distributed.barrier()
 
 model = Pipeline()
-args.max_considered_history_turns = args.max_considered_history_turns()
 
 HAM_BASED_MODEL_CLASSES = {
     'reader': (BertConfig, BertForOrconvqaGlobal, BertTokenizer),
@@ -813,7 +812,6 @@ HAM_BASED_MODEL_CLASSES = {
 }
 
 args.retriever_model_type = args.retriever_model_type.lower()
-args.enable_retrieval_history_selection = args.enable_retrieval_history_selection()
 if args.enable_retrieval_history_selection:
     retriever_config_class, retriever_model_class, retriever_tokenizer_class = HAM_BASED_MODEL_CLASSES['retriever']
     logger.info("take pretrained model")
