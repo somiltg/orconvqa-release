@@ -133,7 +133,7 @@ class RetrieverDataset(Dataset):
         
         if self._given_query:
             if self._is_pretraining:
-                question_text_for_retriever = entry["rewrite"]
+                question_text = question_text_for_retriever = entry["rewrite"]
             else:
                 orig_question_text = entry["question"]
                 history = entry['history']

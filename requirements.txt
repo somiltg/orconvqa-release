@@ -12,6 +12,7 @@ Cython==0.29.13
 dataclasses==0.6
 dyNET==2.1
 easydict==1.9
+faiss-gpu==1.6.4
 funcsigs==1.0.2
 future==0.17.1
 gast==0.2.2
@@ -57,10 +58,15 @@ tensorflow==2.0.0
 tensorflow-estimator==2.0.0
 termcolor==1.1.0
 Theano==1.0.4
-torch
+torch==1.6.0+cu101
 torchtext==0.4.0
+torchvision==0.7.0+cu101
 tqdm==4.36.1
 transformers==2.3.0
 typing==3.6.6
 typing-extensions==3.7.4.3
 urllib3==1.25.6
+virtualenv==16.7.5
+webencodings==0.5.1
+Werkzeug==0.16.0
+wrapt==1.11.2

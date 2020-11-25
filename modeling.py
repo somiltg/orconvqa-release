@@ -654,9 +654,9 @@ class BertForRetrieverOnlyPositivePassage(BertForRetriever):
         return outputs
 
 
-class AlbertHAMForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
+class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
     def __init__(self, config):
-        super(AlbertHAMForRetrieverOnlyPositivePassage, self).__init__(config)
+        super(AlbertWithHAMForRetrieverOnlyPositivePassage, self).__init__(config)
 
         self.query_encoder = AlbertModel(config)
         self.query_proj = nn.Linear(config.hidden_size, config.proj_size)
@@ -664,7 +664,7 @@ class AlbertHAMForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
         self.passage_encoder = AlbertModel(config)
         self.passage_proj = nn.Linear(config.hidden_size, config.proj_size)
         self.proj_size = config.proj_size
-
+        self.ham_linear_layer = nn.Linear(config.proj_size, 1)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
         self.init_weights()
@@ -675,26 +675,30 @@ class AlbertHAMForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
         outputs = ()
 
         if query_input_ids is not None:
-            query_outputs = self.query_encoder(query_input_ids,
-                                               attention_mask=query_attention_mask,
-                                               token_type_ids=query_token_type_ids)
-            # query_outputs: (last_hidden_state, pooler_output, hidden_states, attentions)
+            output = []
+            for i in range(len(query_input_ids)):
+                query_outputs = self.query_encoder(query_input_ids[i],
+                                                   attention_mask=query_attention_mask[i], # (11, 512)
+                                                   token_type_ids=query_token_type_ids[i])
+                query_pooled_output = query_outputs[1]  # cls token (batch size, CLS representation size)
+                query_pooled_output = self.dropout(query_pooled_output)  # apply dropout to CLS representation
+                query_rep = self.query_proj(query_pooled_output)  # sub_batch_size, proj_size (number of queries, cls representation for each query)
 
-            query_pooled_output = query_outputs[1]  # cls token (batch size, CLS representation size)
-            query_pooled_output = self.dropout(query_pooled_output)  # apply dropout to CLS representation
-            # apply linear layer to droput cls representation
-            query_rep = self.query_proj(
-                query_pooled_output)  # batch_size, proj_size (number of queries, cls representation for each query)
-            # print(query_rep[:, 0])
-            outputs = (query_rep,) + outputs
+                cls_weights = self.ham_linear_layer(query_rep) # cls weights: (sub_batch_size, 1)
+                cls_weights = torch.squeeze(cls_weights, dim=-1)
+                # token represnetation
+                query_sequence_tokens = query_outputs[0]
+                query_sequence_tokens = self.dropout(query_sequence_tokens)
+                query_sequence_reps = self.query_proj(query_sequence_tokens)
+                alphas = torch.nn.functional.softmax(cls_weights) # calculate probabilities for history attention scores.
+                dense_representation = torch.sum(query_sequence_reps * alphas, dim=1)
+                output.append(dense_representation)
+            outputs = (output, ) + outputs
 
         if passage_input_ids is not None:
             passage_outputs = self.passage_encoder(passage_input_ids,
                                                    attention_mask=passage_attention_mask,
                                                    token_type_ids=passage_token_type_ids)
-
-            # passage_outputs: (last_hidden_state, pooler_output, hidden_states, attentions)
-
             passage_pooled_output = passage_outputs[1]  # passage CLS representation
             passage_pooled_output = self.dropout(passage_pooled_output)
             passage_rep = self.passage_proj(passage_pooled_output)  # batch_size, proj_size
@@ -711,26 +715,33 @@ class AlbertHAMForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
             # print('retrieval_logits', retrieval_logits.size(), retrieval_logits)
             # print('retrieval_label', retrieval_label.size(), retrieval_label)
             retrieval_loss = retrieval_loss_fct(retrieval_logits, retrieval_label)
-
             outputs = (retrieval_loss,) + outputs
 
         if query_input_ids is not None and passage_rep is not None and retrieval_label is not None and len(
                 passage_rep.size()) == 3:
-            # this is during fine tuning
-            # passage_rep: batch_size, num_blocks, proj_size
-            # todo: add another dimension in query_input_ids to get the dense reprentation of query
-            query_outputs = self.query_encoder(query_input_ids,
-                                               attention_mask=query_attention_mask,
-                                               token_type_ids=query_token_type_ids)
+            dense_representation = None
+            for i in range(len(query_input_ids)):
+                query_outputs = self.query_encoder(query_input_ids[i],
+                                                   attention_mask=query_attention_mask[i], # (11, 512)
+                                                   token_type_ids=query_token_type_ids[i])
+                query_pooled_output = query_outputs[1]  # cls token (batch size, CLS representation size)
+                query_pooled_output = self.dropout(query_pooled_output)  # apply dropout to CLS representation
+                query_rep = self.query_proj(query_pooled_output)  # sub_batch_size, proj_size (number of queries, cls representation for each query)
 
-            # query_input_id dim: (history_size, perHistory)
-            query_pooled_output = query_outputs[1]  # (batch size, proj_size)
-            query_pooled_output = self.dropout(query_pooled_output)
-            query_rep = self.query_proj(query_pooled_output)  # batch_size, proj_size
-            # todo: get token representation and get attention weights using CLS representation
+                cls_weights = self.ham_linear_layer(query_rep) # cls weights: (sub_batch_size, 1)
+                cls_weights = torch.squeeze(cls_weights, dim=-1)
+                # token represnetation
+                query_sequence_tokens = query_outputs[0]
+                query_sequence_tokens = self.dropout(query_sequence_tokens)
+                query_sequence_reps = self.query_proj(query_sequence_tokens)
+                alphas = torch.nn.functional.softmax(cls_weights) # calculate probabilities for history attention scores.
+                if not dense_representation:
+                    dense_representation = torch.sum(query_sequence_reps * alphas, dim=1)
+                else:
+                    dense_representation = torch.stack((dense_representation, torch.sum(query_sequence_reps * alphas, dim=1)))
 
             batch_size, num_blocks, proj_size = passage_rep.size()
-            query_rep = query_rep.unsqueeze(-1)  # query_rep (batch_size, proj_size, 1)
+            query_rep = dense_representation.unsqueeze(-1)  # query_rep (batch_size, proj_size, 1)
             query_rep = query_rep.expand(batch_size, self.proj_size, num_blocks)  # batch_size, proj_size, num_blocks)
             query_rep = query_rep.transpose(1, 2)  # query_rep (batch_size, num_blocks, proj_size)
             retrieval_logits = query_rep * passage_rep  # batch_size, num_blocks, proj_size

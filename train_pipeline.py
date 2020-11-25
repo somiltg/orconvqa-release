@@ -38,13 +38,12 @@ except:
 
 from transformers import WEIGHTS_NAME, BertConfig, BertTokenizer, AlbertConfig, AlbertTokenizer
 from transformers import AdamW, get_linear_schedule_with_warmup
-from utils import (LazyQuacDatasetGlobal, RawResult, 
-                   write_predictions, write_final_predictions, 
+from utils import (LazyQuacDatasetGlobal, RawResult,
+                   write_predictions, write_final_predictions,
                    get_retrieval_metrics, gen_reader_features)
 from retriever_utils import RetrieverDataset
 from modeling import Pipeline, AlbertForRetrieverOnlyPositivePassage, BertForOrconvqaGlobal
 from scorer import quac_eval
-
 
 # In[2]:
 
@@ -54,6 +53,11 @@ logger = logging.getLogger(__name__)
 ALL_MODELS = list(BertConfig.pretrained_config_archive_map.keys())
 
 MODEL_CLASSES = {
+    'reader': (BertConfig, BertForOrconvqaGlobal, BertTokenizer),
+    'retriever': (AlbertConfig, AlbertForRetrieverOnlyPositivePassage, AlbertTokenizer),
+}
+
+HAM_BASED_MODEL_CLASSES = {
     'reader': (BertConfig, BertForOrconvqaGlobal, BertTokenizer),
     'retriever': (AlbertConfig(type_vocab_size=11), AlbertForRetrieverOnlyPositivePassage, AlbertTokenizer),
 }
@@ -69,8 +73,10 @@ def set_seed(args):
     if args.n_gpu > 0:
         torch.cuda.manual_seed_all(args.seed)
 
+
 def to_list(tensor):
     return tensor.detach().cpu().tolist()
+
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -100,7 +106,7 @@ def train(args, train_dataset, model, retriever_tokenizer, reader_tokenizer):
     if args.max_steps > 0:
         t_total = args.max_steps
         args.num_train_epochs = args.max_steps // (
-            len(train_dataloader) // args.gradient_accumulation_steps) + 1
+                len(train_dataloader) // args.gradient_accumulation_steps) + 1
     else:
         t_total = len(
             train_dataloader) // args.gradient_accumulation_steps * args.num_train_epochs
@@ -148,7 +154,8 @@ def train(args, train_dataset, model, retriever_tokenizer, reader_tokenizer):
     logger.info("  Instantaneous batch size per GPU = %d",
                 args.per_gpu_train_batch_size)
     logger.info("  Total train batch size (w. parallel, distributed & accumulation) = %d",
-                args.train_batch_size * args.gradient_accumulation_steps * (torch.distributed.get_world_size() if args.local_rank != -1 else 1))
+                args.train_batch_size * args.gradient_accumulation_steps * (
+                    torch.distributed.get_world_size() if args.local_rank != -1 else 1))
     logger.info("  Gradient Accumulation steps = %d",
                 args.gradient_accumulation_steps)
     logger.info("  Total optimization steps = %d", t_total)
@@ -168,7 +175,7 @@ def train(args, train_dataset, model, retriever_tokenizer, reader_tokenizer):
         epoch_iterator = tqdm(train_dataloader, desc="Iteration",
                               disable=args.local_rank not in [-1, 0])
         for step, batch in enumerate(epoch_iterator):
-            model.eval() # we first get query representations in eval mode
+            model.eval()  # we first get query representations in eval mode
             qids = np.asarray(batch['qid']).reshape(-1).tolist()
             # print('qids', qids)
             question_texts = np.asarray(
@@ -181,7 +188,7 @@ def train(args, train_dataset, model, retriever_tokenizer, reader_tokenizer):
                 batch['answer_start']).reshape(-1).tolist()
             # print('answer_starts', answer_starts)
             query_reps = gen_query_reps(args, model, batch)
-                
+
             retrieval_results = retrieve(args, qids, qid_to_idx, query_reps,
                                          passage_ids, passage_id_to_idx, passage_reps,
                                          qrels, qrels_sparse_matrix,
@@ -195,7 +202,7 @@ def train(args, train_dataset, model, retriever_tokenizer, reader_tokenizer):
             labels_for_reader = retrieval_results['labels_for_reader']
 
             model.train()
-            
+
             inputs = {'query_input_ids': batch['query_input_ids'].to(args.device),
                       'query_attention_mask': batch['query_attention_mask'].to(args.device),
                       'query_token_type_ids': batch['query_token_type_ids'].to(args.device),
@@ -206,15 +213,15 @@ def train(args, train_dataset, model, retriever_tokenizer, reader_tokenizer):
             retriever_loss = retriever_outputs[0]
 
             reader_batch = gen_reader_features(qids, question_texts, answer_texts, answer_starts,
-                                        pids_for_reader, passages_for_reader, labels_for_reader,
-                                        reader_tokenizer, args.reader_max_seq_length, is_training=True)
+                                               pids_for_reader, passages_for_reader, labels_for_reader,
+                                               reader_tokenizer, args.reader_max_seq_length, is_training=True)
 
             reader_batch = {k: v.to(args.device) for k, v in reader_batch.items()}
-            inputs = {'input_ids':       reader_batch['input_ids'],
-                      'attention_mask':  reader_batch['input_mask'],
-                      'token_type_ids':  reader_batch['segment_ids'],
+            inputs = {'input_ids': reader_batch['input_ids'],
+                      'attention_mask': reader_batch['input_mask'],
+                      'token_type_ids': reader_batch['segment_ids'],
                       'start_positions': reader_batch['start_position'],
-                      'end_positions':   reader_batch['end_position'],
+                      'end_positions': reader_batch['end_position'],
                       'retrieval_label': reader_batch['retrieval_label']}
             reader_outputs = model.reader(**inputs)
             reader_loss, qa_loss, rerank_loss = reader_outputs[0:3]
@@ -269,15 +276,16 @@ def train(args, train_dataset, model, retriever_tokenizer, reader_tokenizer):
                     tb_writer.add_scalar(
                         'lr', scheduler.get_lr()[0], global_step)
                     tb_writer.add_scalar(
-                        'loss', (tr_loss - logging_loss)/args.logging_steps, global_step)
+                        'loss', (tr_loss - logging_loss) / args.logging_steps, global_step)
                     tb_writer.add_scalar(
-                        'retriever_loss', (retriever_tr_loss - retriever_logging_loss)/args.logging_steps, global_step)
+                        'retriever_loss', (retriever_tr_loss - retriever_logging_loss) / args.logging_steps,
+                        global_step)
                     tb_writer.add_scalar(
-                        'reader_loss', (reader_tr_loss - reader_logging_loss)/args.logging_steps, global_step)
+                        'reader_loss', (reader_tr_loss - reader_logging_loss) / args.logging_steps, global_step)
                     tb_writer.add_scalar(
-                        'qa_loss', (qa_tr_loss - qa_logging_loss)/args.logging_steps, global_step)
+                        'qa_loss', (qa_tr_loss - qa_logging_loss) / args.logging_steps, global_step)
                     tb_writer.add_scalar(
-                        'rerank_loss', (rerank_tr_loss - rerank_logging_loss)/args.logging_steps, global_step)
+                        'rerank_loss', (rerank_tr_loss - rerank_logging_loss) / args.logging_steps, global_step)
                     logging_loss = tr_loss
                     retriever_logging_loss = retriever_tr_loss
                     reader_logging_loss = reader_tr_loss
@@ -343,7 +351,7 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
                            query_max_seq_length=args.retriever_query_max_seq_length,
                            is_pretraining=args.is_pretraining,
                            given_query=True,
-                           given_passage=False, 
+                           given_passage=False,
                            include_first_for_retriever=args.include_first_for_retriever)
 
     if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:
@@ -407,18 +415,18 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
         reader_batch = {k: v.to(args.device)
                         for k, v in reader_batch.items() if k != 'example_id'}
         with torch.no_grad():
-            inputs = {'input_ids':      reader_batch['input_ids'],
+            inputs = {'input_ids': reader_batch['input_ids'],
                       'attention_mask': reader_batch['input_mask'],
                       'token_type_ids': reader_batch['segment_ids']}
             outputs = model.reader(**inputs)
-        
+
         retriever_probs = retriever_probs.reshape(-1).tolist()
         # print('retriever_probs after', retriever_probs)
         for i, example_id in enumerate(example_ids):
             result = RawResult(unique_id=example_id,
                                start_logits=to_list(outputs[0][i]),
                                end_logits=to_list(outputs[1][i]),
-                               retrieval_logits=to_list(outputs[2][i]), 
+                               retrieval_logits=to_list(outputs[2][i]),
                                retriever_prob=retriever_probs[i])
             all_results.append(result)
 
@@ -442,8 +450,8 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
                                         args.max_answer_length, args.do_lower_case, output_prediction_file,
                                         output_nbest_file, output_null_log_odds_file, args.verbose_logging,
                                         args.version_2_with_negative, args.null_score_diff_threshold)
-    write_final_predictions(all_predictions, output_final_prediction_file, 
-                            use_rerank_prob=args.use_rerank_prob, 
+    write_final_predictions(all_predictions, output_final_prediction_file,
+                            use_rerank_prob=args.use_rerank_prob,
                             use_retriever_prob=args.use_retriever_prob)
     eval_metrics = quac_eval(
         orig_eval_file, output_final_prediction_file)
@@ -464,7 +472,7 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
 
 def gen_query_reps(args, model, batch):
     model.eval()
-    batch = {k: v.to(args.device) for k, v in batch.items() 
+    batch = {k: v.to(args.device) for k, v in batch.items()
              if k not in ['example_id', 'qid', 'question_text', 'answer_text', 'answer_start']}
     with torch.no_grad():
         inputs = {}
@@ -495,11 +503,11 @@ def retrieve(args, qids, qid_to_idx, query_reps,
     # print('labels_for_retriever before', labels_for_retriever)
     if include_positive_passage:
         for i, (qid, labels_per_query) in enumerate(zip(qids, labels_for_retriever)):
-                has_positive = np.sum(labels_per_query)
-                if not has_positive:
-                    positive_pid = list(qrels[qid].keys())[0]
-                    positive_pidx = passage_id_to_idx[positive_pid]
-                    pidx_for_retriever[i][-1] = positive_pidx
+            has_positive = np.sum(labels_per_query)
+            if not has_positive:
+                positive_pid = list(qrels[qid].keys())[0]
+                positive_pidx = passage_id_to_idx[positive_pid]
+                pidx_for_retriever[i][-1] = positive_pidx
         labels_for_retriever = qrels_sparse_matrix[qidx_expanded, pidx_for_retriever].toarray()
         # print('labels_for_retriever after', labels_for_retriever)
         assert np.sum(labels_for_retriever) >= len(labels_for_retriever)
@@ -515,17 +523,17 @@ def retrieve(args, qids, qid_to_idx, query_reps,
     qidx_expanded = np.expand_dims(qidx, axis=1)
     qidx_expanded = np.repeat(qidx_expanded, args.top_k_for_reader, axis=1)
     # print('qidx_expanded', qidx_expanded)
-    
+
     labels_for_reader = qrels_sparse_matrix[qidx_expanded, pidx_for_reader].toarray()
     # print('labels_for_reader before', labels_for_reader)
     # print('labels_for_reader before', labels_for_reader)
     if include_positive_passage:
         for i, (qid, labels_per_query) in enumerate(zip(qids, labels_for_reader)):
-                has_positive = np.sum(labels_per_query)
-                if not has_positive:
-                    positive_pid = list(qrels[qid].keys())[0]
-                    positive_pidx = passage_id_to_idx[positive_pid]
-                    pidx_for_reader[i][-1] = positive_pidx
+            has_positive = np.sum(labels_per_query)
+            if not has_positive:
+                positive_pid = list(qrels[qid].keys())[0]
+                positive_pidx = passage_id_to_idx[positive_pid]
+                pidx_for_reader[i][-1] = positive_pidx
         labels_for_reader = qrels_sparse_matrix[qidx_expanded, pidx_for_reader].toarray()
         # print('labels_for_reader after', labels_for_reader)
         assert np.sum(labels_for_reader) >= len(labels_for_reader)
@@ -544,7 +552,7 @@ def retrieve(args, qids, qid_to_idx, query_reps,
             'retriever_probs': retriever_probs,
             'pidx_for_reader': pidx_for_reader,
             'pids_for_reader': pids_for_reader,
-            'passages_for_reader': passages_for_reader, 
+            'passages_for_reader': passages_for_reader,
             'labels_for_reader': labels_for_reader}
 
 
@@ -555,8 +563,9 @@ def get_passage(i, args):
     line = linecache.getline(args.blocks_path, i + 1)
     line = json.loads(line.strip())
     return line['text']
-get_passages = np.vectorize(get_passage)
 
+
+get_passages = np.vectorize(get_passage)
 
 # In[9]:
 
@@ -747,18 +756,21 @@ parser.add_argument("--top_k_for_reader", default=5, type=int,
                     help="update the reader with top k passages")
 parser.add_argument("--use_rerank_prob", default=True, type=str2bool,
                     help="include rerank probs in final answer ranking")
+parser.add_argument("--run_ham_model", default=False, type=str2bool, help="run history based attention model or not")
 
 args, unknown = parser.parse_known_args()
 
 if os.path.exists(args.output_dir) and os.listdir(args.output_dir) and args.do_train and not args.overwrite_output_dir:
     raise ValueError(
-        "Output directory ({}) already exists and is not empty. Use --overwrite_output_dir to overcome.".format(args.output_dir))
+        "Output directory ({}) already exists and is not empty. Use --overwrite_output_dir to overcome.".format(
+            args.output_dir))
 args.retriever_tokenizer_dir = os.path.join(args.output_dir, 'retriever')
 args.reader_tokenizer_dir = os.path.join(args.output_dir, 'reader')
 # Setup distant debugging if needed
 if args.server_ip and args.server_port:
     # Distant debugging - see https://code.visualstudio.com/docs/python/debugging#_attach-to-a-local-script
     import ptvsd
+
     print("Waiting for debugger attach")
     ptvsd.enable_attach(
         address=(args.server_ip, args.server_port), redirect_output=True)
@@ -787,7 +799,6 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message
 logger.warning("Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s",
                args.local_rank, device, args.n_gpu, bool(args.local_rank != -1), args.fp16)
 
-
 logger.info("yha to aaja")
 # Set seed
 set_seed(args)
@@ -797,22 +808,29 @@ if args.local_rank not in [-1, 0]:
     # Make sure only the first process in distributed training will download model & vocab
     torch.distributed.barrier()
 
-logger.info("before pipeline")
-
 model = Pipeline()
 
-logger.info("ab yha pahuch")
 args.retriever_model_type = args.retriever_model_type.lower()
-logger.info("retriever model")
-retriever_config_class, retriever_model_class, retriever_tokenizer_class = MODEL_CLASSES['retriever']
-logger.info("take pretrained model")
-retriever_config = retriever_config_class.from_pretrained(args.retrieve_checkpoint)
+args.run_ham_model = args.run_ham_model()
+if args.run_ham_model:
+    retriever_config_class, retriever_model_class, retriever_tokenizer_class = HAM_BASED_MODEL_CLASSES['retriever']
+    logger.info("take pretrained model")
+    retriever_config = retriever_config_class.from_pretrained(args.retrieve_checkpoint)
 
+    logger.info("will load pretrained retriever")
+    # load pretrained retriever
+    retriever_tokenizer = retriever_tokenizer_class.from_pretrained(args.retrieve_tokenizer_dir)
+    retriever_model = retriever_model_class.from_pretrained(args.retrieve_checkpoint, force_download=True)
+else:
+    retriever_config_class, retriever_model_class, retriever_tokenizer_class = MODEL_CLASSES['retriever']
+    logger.info("take pretrained model")
+    retriever_config = retriever_config_class.from_pretrained(args.retrieve_checkpoint)
 
-logger.info("will load pretrained retriever")
-# load pretrained retriever
-retriever_tokenizer = retriever_tokenizer_class.from_pretrained(args.retrieve_tokenizer_dir)
-retriever_model = retriever_model_class.from_pretrained(args.retrieve_checkpoint, force_download=True)
+    logger.info("will load pretrained retriever")
+    # load pretrained retriever
+    retriever_tokenizer = retriever_tokenizer_class.from_pretrained(args.retrieve_tokenizer_dir)
+    retriever_model = retriever_model_class.from_pretrained(args.retrieve_checkpoint, force_download=True)
+
 
 model.retriever = retriever_model
 # do not need and do not tune passage encoder
@@ -822,8 +840,9 @@ logger.info("0 load pretrained retriever")
 
 args.reader_model_type = args.reader_model_type.lower()
 reader_config_class, reader_model_class, reader_tokenizer_class = MODEL_CLASSES['reader']
-reader_config = reader_config_class.from_pretrained(args.reader_config_name if args.reader_config_name else args.reader_model_name_or_path,
-                                                    cache_dir=args.reader_cache_dir if args.reader_cache_dir else None)
+reader_config = reader_config_class.from_pretrained(
+    args.reader_config_name if args.reader_config_name else args.reader_model_name_or_path,
+    cache_dir=args.reader_cache_dir if args.reader_cache_dir else None)
 reader_config.num_qa_labels = 2
 # this not used for BertForOrconvqaGlobal
 reader_config.num_retrieval_labels = 2
@@ -831,9 +850,10 @@ reader_config.qa_loss_factor = args.qa_loss_factor
 reader_config.retrieval_loss_factor = args.retrieval_loss_factor
 logger.info("1 load pretrained retriever")
 
-reader_tokenizer = reader_tokenizer_class.from_pretrained(args.reader_tokenizer_name if args.reader_tokenizer_name else args.reader_model_name_or_path,
-                                                          do_lower_case=args.do_lower_case,
-                                                          cache_dir=args.reader_cache_dir if args.reader_cache_dir else None)
+reader_tokenizer = reader_tokenizer_class.from_pretrained(
+    args.reader_tokenizer_name if args.reader_tokenizer_name else args.reader_model_name_or_path,
+    do_lower_case=args.do_lower_case,
+    cache_dir=args.reader_cache_dir if args.reader_cache_dir else None)
 reader_model = reader_model_class.from_pretrained(args.reader_model_name_or_path,
                                                   from_tf=bool(
                                                       '.ckpt' in args.reader_model_name_or_path),
@@ -858,6 +878,7 @@ logger.info("Training/evaluation parameters %s", args)
 if args.fp16:
     try:
         import apex
+
         apex.amp.register_half_function(torch, 'einsum')
     except ImportError:
         raise ImportError(
@@ -872,7 +893,7 @@ with open(args.passage_reps_path, 'rb') as handle:
     passage_reps = pkl.load(handle)
 
 logger.info('constructing passage faiss_index')
-faiss_res = faiss.StandardGpuResources() 
+faiss_res = faiss.StandardGpuResources()
 index = faiss.IndexFlatIP(args.proj_size)
 index.add(passage_reps)
 gpu_index = faiss.index_cpu_to_gpu(faiss_res, 1, index)
@@ -903,7 +924,6 @@ qrels_sparse_matrix = sp.sparse.csr_matrix(
 
 evaluator = pytrec_eval.RelevanceEvaluator(qrels, {'recip_rank', 'recall'})
 
-
 # In[10]:
 
 
@@ -915,7 +935,7 @@ if args.do_train:
                                  query_max_seq_length=args.retriever_query_max_seq_length,
                                  is_pretraining=args.is_pretraining,
                                  given_query=True,
-                                 given_passage=False, 
+                                 given_passage=False,
                                  include_first_for_retriever=args.include_first_for_retriever)
     global_step, tr_loss = train(
         args, train_dataset, model, retriever_tokenizer, reader_tokenizer)
@@ -980,7 +1000,6 @@ if args.do_train and (args.local_rank == -1 or torch.distributed.get_rank() == 0
         args.reader_tokenizer_dir, do_lower_case=args.do_lower_case)
     model.to(args.device)
 
-
 # In[11]:
 
 
@@ -998,9 +1017,9 @@ if args.do_eval and args.local_rank in [-1, 0]:
     checkpoints = [args.output_dir]
     if args.eval_all_checkpoints:
         checkpoints = sorted(list(os.path.dirname(os.path.dirname(c)) for c in
-                                      glob.glob(args.output_dir + '/*/retriever/' + WEIGHTS_NAME, recursive=False)))
-#         logging.getLogger("transformers.modeling_utils").setLevel(
-#             logging.WARN)  # Reduce model loading logs
+                                  glob.glob(args.output_dir + '/*/retriever/' + WEIGHTS_NAME, recursive=False)))
+    #         logging.getLogger("transformers.modeling_utils").setLevel(
+    #             logging.WARN)  # Reduce model loading logs
 
     logger.info("Evaluate the following checkpoints: %s", checkpoints)
 
@@ -1047,13 +1066,12 @@ if args.do_eval and args.local_rank in [-1, 0]:
     logger.info("Results: {}".format(results))
     logger.info("best metrics: {}".format(best_metrics))
 
-
 # In[12]:
 
 
-if args.do_test and args.local_rank in [-1, 0]:    
+if args.do_test and args.local_rank in [-1, 0]:
     if args.do_eval:
-        best_global_step = best_metrics['global_step'] 
+        best_global_step = best_metrics['global_step']
     else:
         best_global_step = args.best_global_step
         retriever_tokenizer = retriever_tokenizer_class.from_pretrained(
@@ -1084,9 +1102,4 @@ if args.do_test and args.local_rank in [-1, 0]:
 
     logger.info("Test Result: {}".format(result))
 
-
 # In[ ]:
-
-
-
-
