@@ -467,7 +467,7 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
 
 def gen_query_reps(args, model, batch):
     model.eval()
-    batch = {k: v.to(args.device) for k, v in batch.items()
+    batch = {k: [item.to(args.device) for item in v] if isinstance(v, list) else v.to(args.device) for k, v in batch.items()
              if k not in ['example_id', 'qid', 'question_text', 'answer_text', 'answer_start']}
     with torch.no_grad():
         inputs = {}
