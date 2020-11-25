@@ -652,6 +652,101 @@ class BertForRetrieverOnlyPositivePassage(BertForRetriever):
             outputs = (retrieval_loss, ) + outputs
 
         return outputs
+
+
+class AlbertHAMForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
+    def __init__(self, config):
+        super(AlbertHAMForRetrieverOnlyPositivePassage, self).__init__(config)
+
+        self.query_encoder = AlbertModel(config)
+        self.query_proj = nn.Linear(config.hidden_size, config.proj_size)
+
+        self.passage_encoder = AlbertModel(config)
+        self.passage_proj = nn.Linear(config.hidden_size, config.proj_size)
+        self.proj_size = config.proj_size
+
+        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+
+        self.init_weights()
+
+    def forward(self, query_input_ids=None, query_attention_mask=None, query_token_type_ids=None,
+                passage_input_ids=None, passage_attention_mask=None, passage_token_type_ids=None,
+                retrieval_label=None, query_rep=None, passage_rep=None):
+        outputs = ()
+
+        if query_input_ids is not None:
+            query_outputs = self.query_encoder(query_input_ids,
+                                               attention_mask=query_attention_mask,
+                                               token_type_ids=query_token_type_ids)
+            # query_outputs: (last_hidden_state, pooler_output, hidden_states, attentions)
+
+            query_pooled_output = query_outputs[1]  # cls token (batch size, CLS representation size)
+            query_pooled_output = self.dropout(query_pooled_output)  # apply dropout to CLS representation
+            # apply linear layer to droput cls representation
+            query_rep = self.query_proj(
+                query_pooled_output)  # batch_size, proj_size (number of queries, cls representation for each query)
+            # print(query_rep[:, 0])
+            outputs = (query_rep,) + outputs
+
+        if passage_input_ids is not None:
+            passage_outputs = self.passage_encoder(passage_input_ids,
+                                                   attention_mask=passage_attention_mask,
+                                                   token_type_ids=passage_token_type_ids)
+
+            # passage_outputs: (last_hidden_state, pooler_output, hidden_states, attentions)
+
+            passage_pooled_output = passage_outputs[1]  # passage CLS representation
+            passage_pooled_output = self.dropout(passage_pooled_output)
+            passage_rep = self.passage_proj(passage_pooled_output)  # batch_size, proj_size
+            # print(passage_rep[:, 0])
+            outputs = (passage_rep,) + outputs
+
+        if query_input_ids is not None and passage_input_ids is not None:
+            passage_rep_t = passage_rep.transpose(0, 1)  # proj_size, batch_size (128, batch_size)
+            retrieval_logits = torch.matmul(query_rep, passage_rep_t)  # batch_size, batch_size
+            retrieval_label = torch.arange(query_rep.size(0), device=query_rep.device,
+                                           dtype=retrieval_label.dtype)  # batch size
+            # print('retrieval_label after', retrieval_label.size(), retrieval_label)
+            retrieval_loss_fct = CrossEntropyLoss()
+            # print('retrieval_logits', retrieval_logits.size(), retrieval_logits)
+            # print('retrieval_label', retrieval_label.size(), retrieval_label)
+            retrieval_loss = retrieval_loss_fct(retrieval_logits, retrieval_label)
+
+            outputs = (retrieval_loss,) + outputs
+
+        if query_input_ids is not None and passage_rep is not None and retrieval_label is not None and len(
+                passage_rep.size()) == 3:
+            # this is during fine tuning
+            # passage_rep: batch_size, num_blocks, proj_size
+            # todo: add another dimension in query_input_ids to get the dense reprentation of query
+            query_outputs = self.query_encoder(query_input_ids,
+                                               attention_mask=query_attention_mask,
+                                               token_type_ids=query_token_type_ids)
+
+            # query_input_id dim: (history_size, perHistory)
+            query_pooled_output = query_outputs[1]  # (batch size, proj_size)
+            query_pooled_output = self.dropout(query_pooled_output)
+            query_rep = self.query_proj(query_pooled_output)  # batch_size, proj_size
+            # todo: get token representation and get attention weights using CLS representation
+
+            batch_size, num_blocks, proj_size = passage_rep.size()
+            query_rep = query_rep.unsqueeze(-1)  # query_rep (batch_size, proj_size, 1)
+            query_rep = query_rep.expand(batch_size, self.proj_size, num_blocks)  # batch_size, proj_size, num_blocks)
+            query_rep = query_rep.transpose(1, 2)  # query_rep (batch_size, num_blocks, proj_size)
+            retrieval_logits = query_rep * passage_rep  # batch_size, num_blocks, proj_size
+            retrieval_logits = torch.sum(retrieval_logits, dim=-1)  # batch_size, num_blocks
+            retrieval_probs = F.softmax(retrieval_logits, dim=1)
+            # print('retrieval_label before', retrieval_label.size(), retrieval_label)
+            retrieval_label = retrieval_label.squeeze(-1).argmax(dim=1)
+            # print('retrieval_label after', retrieval_label.size(), retrieval_label)
+            retrieval_loss_fct = CrossEntropyLoss()
+            # print('retrieval_logits', retrieval_logits.size(), retrieval_logits)
+            # print('retrieval_label', retrieval_label.size(), retrieval_label)
+            retrieval_loss = retrieval_loss_fct(retrieval_logits, retrieval_label)
+
+            outputs = (retrieval_loss,) + outputs
+
+        return outputs
     
 class AlbertForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
     r"""

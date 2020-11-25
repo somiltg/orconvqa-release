@@ -55,7 +55,7 @@ ALL_MODELS = list(BertConfig.pretrained_config_archive_map.keys())
 
 MODEL_CLASSES = {
     'reader': (BertConfig, BertForOrconvqaGlobal, BertTokenizer),
-    'retriever': (AlbertConfig, AlbertForRetrieverOnlyPositivePassage, AlbertTokenizer),
+    'retriever': (AlbertConfig(type_vocab_size=11), AlbertForRetrieverOnlyPositivePassage, AlbertTokenizer),
 }
 
 

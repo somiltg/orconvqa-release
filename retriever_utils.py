@@ -87,6 +87,8 @@ class RetrieverDataset(Dataset):
                  is_pretraining=False, given_query=False, 
                  given_passage=False, only_positive_passage=True, 
                  include_first_for_retriever=False):
+        # Todo: prepand_history_questions: False
+        # Todo: preprocessing with a flag
         
         self._filename = filename
         self._tokenizer = tokenizer
@@ -260,6 +262,7 @@ class GenPassageRepDataset(Dataset):
                          'example_id': example_id}
 
         return batch_feature
+
 
 def retriever_convert_example_to_feature(example, tokenizer,
                                       max_length=512,
