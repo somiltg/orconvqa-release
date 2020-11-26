@@ -412,13 +412,16 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
             print("after reader mode")
 
         retriever_probs = retriever_probs.reshape(-1).tolist()
+        print("retriever probs shape {}".format(len(retriever_probs)))
         for i, example_id in enumerate(example_ids):
             result = RawResult(unique_id=example_id,
                                start_logits=to_list(outputs[0][i]),
                                end_logits=to_list(outputs[1][i]),
                                retrieval_logits=to_list(outputs[2][i]),
                                retriever_prob=retriever_probs[i])
+            print("result {}".format(result))
             all_results.append(result)
+        print("all results {}".format(all_results))
 
     evalTime = timeit.default_timer() - start_time
     logger.info("  Evaluation done in total %f secs (%f sec per example)",
