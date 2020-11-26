@@ -974,6 +974,7 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
 
         if query_input_ids is not None and len(query_input_ids) > 0:
             print("len of query input ids {}".format(len(query_input_ids)))
+            print("query_input_ids {}".format(query_input_ids))
             print("len of query attention mask {}".format(len(query_attention_mask)))
             print("len of query_token_type_ids{}".format(len(query_token_type_ids)))
             dense_representation = self.preprocess_sub_batch(query_input_ids, query_attention_mask, query_token_type_ids)

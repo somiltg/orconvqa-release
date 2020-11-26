@@ -183,8 +183,7 @@ class RetrieverDataset(Dataset):
                         input_ids.append(turn_query_feature.input_ids)
                         token_type_ids.append(turn_query_feature.token_type_ids)
                         attention_mask.append(turn_query_feature.attention_mask)
-                    query_feature = RetrieverInputFeatures(input_ids, token_type_ids, attention_mask, None)
-
+                    query_feature = RetrieverInputFeatures(np.vstack(input_ids), np.vstack(token_type_ids), np.vstack(attention_mask), None)
                 else:
                     # Use the prepending technique
                     question_text_for_retriever = get_prepended_history_question(
@@ -196,7 +195,16 @@ class RetrieverDataset(Dataset):
             query_feature_dict['query_token_type_ids'] = query_feature.token_type_ids
             query_feature_dict['query_attention_mask'] = query_feature.attention_mask
             return_feature_dict.update(query_feature_dict)
+        '''
+        batch: 40 question, prepend history, max seq length (batch_size, sequence_length, embedding size)
         
+        in our case:
+        batch 40 question:
+        for each question: there is sub batch (sub_batch_size, sequence_length)
+        (batch_size, sub_batch_size, sequence_length)
+        '''
+
+
         if self._given_passage:
             passages = entry['evidences']
             
