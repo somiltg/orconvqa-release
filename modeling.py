@@ -973,7 +973,6 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
         outputs = ()
 
         if query_input_ids is not None and len(query_input_ids) > 0:
-            output = []
             print("len of query input ids {}".format(len(query_input_ids)))
             print("len of query attention mask {}".format(len(query_attention_mask)))
             print("len of query_token_type_ids{}".format(len(query_token_type_ids)))

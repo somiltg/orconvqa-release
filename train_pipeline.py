@@ -510,7 +510,7 @@ def retrieve(args, qids, qid_to_idx, query_reps,
         labels_for_retriever = qrels_sparse_matrix[qidx_expanded, pidx_for_retriever].toarray()
         # print('labels_for_retriever after', labels_for_retriever)
         #print("label for retriever {}".format(labels_for_retriever))
-        #assert np.sum(labels_for_retriever) >= len(labels_for_retriever)
+        assert np.sum(labels_for_retriever) >= len(labels_for_retriever)
     pids_for_retriever = passage_ids[pidx_for_retriever]
     passage_reps_for_retriever = passage_reps[pidx_for_retriever]
 
@@ -536,7 +536,7 @@ def retrieve(args, qids, qid_to_idx, query_reps,
                 pidx_for_reader[i][-1] = positive_pidx
         labels_for_reader = qrels_sparse_matrix[qidx_expanded, pidx_for_reader].toarray()
         # print('labels_for_reader after', labels_for_reader)
-        # assert np.sum(labels_for_reader) >= len(labels_for_reader)
+        assert np.sum(labels_for_reader) >= len(labels_for_reader)
     # print('labels_for_reader after', labels_for_reader)
     pids_for_reader = passage_ids[pidx_for_reader]
     # print('pids_for_reader', pids_for_reader)
