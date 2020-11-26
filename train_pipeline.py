@@ -354,7 +354,14 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
     # eval_sampler = SequentialSampler(
     #     dataset) if args.local_rank == -1 else DistributedSampler(dataset)
     print("inside evaluate before dataloader")
-    eval_sampler = SequentialSampler(dataset)
+    '''
+    train_sampler = RandomSampler(
+        train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
+    train_dataloader = DataLoader(
+        train_dataset, sampler=train_sampler, batch_size=args.train_batch_size, num_workers=args.num_workers)
+    '''
+
+    eval_sampler = RandomSampler(dataset)
     eval_dataloader = DataLoader(dataset, sampler=eval_sampler, batch_size=args.eval_batch_size, num_workers=args.num_workers)
     print("inside evaluate after dataloader")
     # multi-gpu evaluate
