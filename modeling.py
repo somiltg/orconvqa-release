@@ -942,7 +942,7 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
         outputs = ()
 
         if query_input_ids is not None:
-            output = []
+            output = None
             print("len of query input ids {}".format(len(query_input_ids)))
             print("len of query attention mask {}".format(len(query_attention_mask)))
             print("len of query_token_type_ids{}".format(len(query_token_type_ids)))
@@ -961,12 +961,18 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
                 cls_weights = torch.squeeze(cls_weights, dim=-1)
                 # token represnetation
                 query_sequence_tokens = query_outputs[0]
-                print("query_sequence_tokens shape {}".format(query_sequence_tokens.shape))
                 query_sequence_tokens = self.dropout(query_sequence_tokens)
                 query_sequence_reps = self.query_proj(query_sequence_tokens)
+                print("query_sequence_tokens shape {}".format(query_sequence_tokens.shape))
+                print('query sequence reps shape {}'.format(query_sequence_reps.shape))
                 alphas = torch.nn.functional.softmax(cls_weights) # calculate probabilities for history attention scores.
                 dense_representation = torch.sum(query_sequence_reps * alphas, dim=1)
-                output.append(dense_representation)
+                print("dense representation shape {}".format(dense_representation.shape))
+                if not output:
+                    output = dense_representation
+                else:
+                    output = torch.stack((output, dense_representation))
+                print("output shape {}".format(output.shape))
             outputs = (output, ) + outputs
 
         if passage_input_ids is not None:
