@@ -943,7 +943,7 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
                 query_pooled_output)  # sub_batch_size, proj_size (number of queries, cls representation for each query)
             cls_weights = self.ham_linear_layer(query_rep)  # cls weights: (sub_batch_size, 1)
             cls_weights = torch.squeeze(cls_weights, dim=-1)
-            # token represnetation
+            # token representation
             query_sequence_tokens = query_outputs[0]
             query_sequence_tokens = self.dropout(query_sequence_tokens)
             query_sequence_reps = self.query_proj(query_sequence_tokens)
@@ -951,7 +951,6 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
             alphas = alphas.view(alphas.shape[0], 1, 1)
             dense_representation = torch.sum(query_sequence_reps * alphas, dim=0)
             dense_representation = torch.mean(dense_representation, dim=0, keepdim=True)
-            print("dense representation shape {}".format(dense_representation.shape))
             output.append(dense_representation)
         output = torch.cat(output, dim=0)
         return output

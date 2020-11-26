@@ -178,7 +178,6 @@ def train(args, train_dataset, model, retriever_tokenizer, reader_tokenizer):
             answer_starts = np.asarray(
                 batch['answer_start']).reshape(-1).tolist()
             query_reps = gen_query_reps(args, model, batch)
-            print("query reps shape {}".format(query_reps.shape))
             retrieval_results = retrieve(args, qids, qid_to_idx, query_reps,
                                          passage_ids, passage_id_to_idx, passage_reps,
                                          qrels, qrels_sparse_matrix,
@@ -998,11 +997,7 @@ if args.do_eval and args.local_rank in [-1, 0]:
     if args.eval_all_checkpoints:
         checkpoints = sorted(list(os.path.dirname(os.path.dirname(c)) for c in
                                   glob.glob(args.output_dir + '/*/retriever/' + WEIGHTS_NAME, recursive=False)))
-    #         logging.getLogger("transformers.modeling_utils").setLevel(
-    #             logging.WARN)  # Reduce model loading logs
-
     logger.info("Evaluate the following checkpoints: %s", checkpoints)
-
     for checkpoint in checkpoints:
         # Reload the model
         global_step = checkpoint.split(
