@@ -1021,7 +1021,7 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
                     dense_representation = torch.sum(query_sequence_reps * alphas, dim=1)
                 else:
                     dense_representation = torch.stack((dense_representation, torch.sum(query_sequence_reps * alphas, dim=1)))
-
+            dense_representation = dense_representation.squeeze(1) # changed dense representation
             batch_size, num_blocks, proj_size = passage_rep.size()
             query_rep = dense_representation.unsqueeze(-1)  # query_rep (batch_size, proj_size, 1)
             query_rep = query_rep.expand(batch_size, self.proj_size, num_blocks)  # batch_size, proj_size, num_blocks)

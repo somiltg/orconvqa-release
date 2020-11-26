@@ -171,7 +171,7 @@ def train(args, train_dataset, model, retriever_tokenizer, reader_tokenizer):
         for step, batch in enumerate(epoch_iterator):
             model.eval()  # we first get query representations in eval mode
             qids = np.asarray(batch['qid']).reshape(-1).tolist()
-            # print('qids', qids)
+            print('qids', qids)
             question_texts = np.asarray(
                 batch['question_text']).reshape(-1).tolist()
             # print('question_texts', question_texts)
@@ -182,7 +182,7 @@ def train(args, train_dataset, model, retriever_tokenizer, reader_tokenizer):
                 batch['answer_start']).reshape(-1).tolist()
             # print('answer_starts', answer_starts)
             query_reps = gen_query_reps(args, model, batch)
-
+            print("query reps shape {}".format(query_reps.shape))
             retrieval_results = retrieve(args, qids, qid_to_idx, query_reps,
                                          passage_ids, passage_id_to_idx, passage_reps,
                                          qrels, qrels_sparse_matrix,
@@ -505,6 +505,7 @@ def retrieve(args, qids, qid_to_idx, query_reps,
                 pidx_for_retriever[i][-1] = positive_pidx
         labels_for_retriever = qrels_sparse_matrix[qidx_expanded, pidx_for_retriever].toarray()
         # print('labels_for_retriever after', labels_for_retriever)
+        print("label for retriever {}".format(labels_for_retriever))
         assert np.sum(labels_for_retriever) >= len(labels_for_retriever)
     pids_for_retriever = passage_ids[pidx_for_retriever]
     passage_reps_for_retriever = passage_reps[pidx_for_retriever]
