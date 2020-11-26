@@ -173,7 +173,6 @@ class RetrieverDataset(Dataset):
                 if self._history_attention_selection_enabled_for_retriever:
                     # Use selection mechanism, form a list of features for each conversation turn
                     input_ids, token_type_ids, attention_mask = [], [], []
-                    print("len of history {} for qid {}".format(len(history), qas_id))
                     if len(history) == 0:
                         turn_example = RetrieverInputExample(guid=qas_id, text_a=orig_question_text)
                         turn_query_feature = retriever_convert_example_to_feature(turn_example, self._tokenizer,
