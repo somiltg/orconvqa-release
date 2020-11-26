@@ -197,9 +197,9 @@ def train(args, train_dataset, model, retriever_tokenizer, reader_tokenizer):
 
             model.train()
 
-            inputs = {'query_input_ids': batch['query_input_ids'].to(args.device),
-                      'query_attention_mask': batch['query_attention_mask'].to(args.device),
-                      'query_token_type_ids': batch['query_token_type_ids'].to(args.device),
+            inputs = {'query_input_ids': to_device(batch['query_input_ids']),
+                      'query_attention_mask': to_device(batch['query_attention_mask']),
+                      'query_token_type_ids': to_device(batch['query_token_type_ids']),
                       'passage_rep': torch.from_numpy(passage_reps_for_retriever).to(args.device),
                       'retrieval_label': torch.from_numpy(labels_for_retriever).to(args.device)}
             retriever_outputs = model.retriever(**inputs)
@@ -464,10 +464,14 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
 
 # In[6]:
 
+def to_device(input_val):
+    # convert to device
+    return [item.to(args.device) for item in input_val] if isinstance(input_val, list) else input_val.to(args.device)
+
 
 def gen_query_reps(args, model, batch):
     model.eval()
-    batch = {k: [item.to(args.device) for item in v] if isinstance(v, list) else v.to(args.device) for k, v in batch.items()
+    batch = {k: to_device(v) for k, v in batch.items()
              if k not in ['example_id', 'qid', 'question_text', 'answer_text', 'answer_start']}
     with torch.no_grad():
         inputs = {}
