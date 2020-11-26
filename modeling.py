@@ -974,7 +974,7 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
                 # else:
                 #     output = torch.vstack((output, dense_representation))
                 # print("output shape {}".format(output.shape))
-            output = torch.vstack(output)
+            output = torch.cat(output, dim=0)
             # output = output.squeeze(dim=1)
             print("updated dimension {}".format(output.shape))
             outputs = (output, ) + outputs
