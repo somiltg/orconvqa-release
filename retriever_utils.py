@@ -185,6 +185,9 @@ class RetrieverDataset(Dataset):
                         token_type_ids.append(turn_query_feature.token_type_ids)
                         attention_mask.append(turn_query_feature.attention_mask)
                     print("len of input ids {} token type ids {} and attention mask {}".format(len(input_ids), len(token_type_ids), len(attention_mask)))
+                    print("input ids {}".format(input_ids))
+                    print("token type ids {}".format(token_type_ids))
+                    print("attention masks {}".format(attention_mask))
                     query_feature = RetrieverInputFeatures(np.vstack(input_ids), np.vstack(token_type_ids), np.vstack(attention_mask), None)
                 else:
                     # Use the prepending technique

@@ -493,36 +493,36 @@ def retrieve(args, qids, qid_to_idx, query_reps,
              gpu_index, include_positive_passage=False):
     query_reps = query_reps.detach().cpu().numpy()
     D, I = gpu_index.search(query_reps, args.top_k_for_retriever)
-    print("query_reps {}".format(query_reps.shape))
-    print("D {}".format(D))
-    print("I {}".format(I))
-    print("D shape {}".format(D.shape))
-    print("I shape {}".format(I.shape))
-    print("qids length {}".format(len(qids)))
+    # print("query_reps {}".format(query_reps.shape))
+    # print("D {}".format(D))
+    # print("I {}".format(I))
+    # print("D shape {}".format(D.shape))
+    # print("I shape {}".format(I.shape))
+    # print("qids length {}".format(len(qids)))
     pidx_for_retriever = np.copy(I)
     qidx = [qid_to_idx[qid] for qid in qids]
     qidx_expanded = np.expand_dims(qidx, axis=1)
     qidx_expanded = np.repeat(qidx_expanded, args.top_k_for_retriever, axis=1)
     labels_for_retriever = qrels_sparse_matrix[qidx_expanded, pidx_for_retriever].toarray()
-    print("qid expanded  {}".format(qidx_expanded))
-    print("pid retriever {}".format(pidx_for_retriever))
-    print("label for retriever {}".format(labels_for_retriever))
+    # print("qid expanded  {}".format(qidx_expanded))
+    # print("pid retriever {}".format(pidx_for_retriever))
+    # print("label for retriever {}".format(labels_for_retriever))
     # print('labels_for_retriever before', labels_for_retriever)
     if include_positive_passage:
         for i, (qid, labels_per_query) in enumerate(zip(qids, labels_for_retriever)):
-            print("qid length in retriever {}".format(len(qid)))
-            print("qid in retriever {}".format(qid))
-            print("labels per query len {}".format(len(labels_per_query)))
-            print("labels per query  {}".format(labels_per_query))
+            # print("qid length in retriever {}".format(len(qid)))
+            # print("qid in retriever {}".format(qid))
+            # print("labels per query len {}".format(len(labels_per_query)))
+            # print("labels per query  {}".format(labels_per_query))
             has_positive = np.sum(labels_per_query)
             if not has_positive:
                 positive_pid = list(qrels[qid].keys())[0]
-                print("positive pid {}".format(positive_pid))
+                # print("positive pid {}".format(positive_pid))
                 positive_pidx = passage_id_to_idx[positive_pid]
-                print("positive pidx {}".format(positive_pidx))
+                # print("positive pidx {}".format(positive_pidx))
                 pidx_for_retriever[i][-1] = positive_pidx
         labels_for_retriever = qrels_sparse_matrix[qidx_expanded, pidx_for_retriever].toarray()
-        print('labels_for_retriever after', labels_for_retriever)
+        # print('labels_for_retriever after', labels_for_retriever)
         #print("label for retriever {}".format(labels_for_retriever))
         assert np.sum(labels_for_retriever) >= len(labels_for_retriever)
     pids_for_retriever = passage_ids[pidx_for_retriever]
