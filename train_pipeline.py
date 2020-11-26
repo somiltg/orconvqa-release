@@ -493,7 +493,7 @@ def retrieve(args, qids, qid_to_idx, query_reps,
              gpu_index, include_positive_passage=False):
     query_reps = query_reps.detach().cpu().numpy()
     D, I = gpu_index.search(query_reps, args.top_k_for_retriever)
-
+    print("qids length {}".format(len(qids)))
     pidx_for_retriever = np.copy(I)
     qidx = [qid_to_idx[qid] for qid in qids]
     qidx_expanded = np.expand_dims(qidx, axis=1)
@@ -512,7 +512,9 @@ def retrieve(args, qids, qid_to_idx, query_reps,
             has_positive = np.sum(labels_per_query)
             if not has_positive:
                 positive_pid = list(qrels[qid].keys())[0]
+                print("positive pid {}".format(positive_pid))
                 positive_pidx = passage_id_to_idx[positive_pid]
+                print("positive pidx {}".format(positive_pidx))
                 pidx_for_retriever[i][-1] = positive_pidx
         labels_for_retriever = qrels_sparse_matrix[qidx_expanded, pidx_for_retriever].toarray()
         print('labels_for_retriever after', labels_for_retriever)
