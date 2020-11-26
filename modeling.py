@@ -973,6 +973,8 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
                 else:
                     output = torch.stack((output, dense_representation))
                 print("output shape {}".format(output.shape))
+            output = output.squeeze(dim=1)
+            print("updated dimension {}".format(output.shape))
             outputs = (output, ) + outputs
 
         if passage_input_ids is not None:
