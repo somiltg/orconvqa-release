@@ -173,6 +173,7 @@ class RetrieverDataset(Dataset):
                 if self._history_attention_selection_enabled_for_retriever:
                     # Use selection mechanism, form a list of features for each conversation turn
                     input_ids, token_type_ids, attention_mask = [], [], []
+                    print("len of history {} for qid {}".format(len(history), qas_id))
                     for turn_num in range(len(history)):
                         augmented_turn_text = get_prepended_history_question([], history[turn_num]['question'])
                         turn_example = RetrieverInputExample(guid=qas_id, text_a=orig_question_text,
@@ -355,7 +356,7 @@ def retriever_convert_example_to_feature(example, tokenizer,
     logger.info("guid: %s" % (example.guid))
     if example.sub_guid is not None:
         logger.info("sub_guid: %s" % (example.sub_guid))
-    # logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
+    logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
     # logger.info("attention_mask: %s" % " ".join([str(x) for x in attention_mask]))
     # logger.info("token_type_ids: %s" % " ".join([str(x) for x in token_type_ids]))
     logger.info("label: %s" % (example.label))
