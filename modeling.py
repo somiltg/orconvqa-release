@@ -945,20 +945,15 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
                                                attention_mask=query_attention_mask[i],  # (11, 512)
                                                token_type_ids=query_token_type_ids[i])
             query_pooled_output = query_outputs[1]  # cls token (batch size, CLS representation size)
-            print("query_pooled output shape {}".format(query_pooled_output.shape))
             query_pooled_output = self.dropout(query_pooled_output)  # apply dropout to CLS representation
             query_rep = self.query_proj(
                 query_pooled_output)  # sub_batch_size, proj_size (number of queries, cls representation for each query)
-            print("query rep output shape {}".format(query_rep.shape))
             cls_weights = self.ham_linear_layer(query_rep)  # cls weights: (sub_batch_size, 1)
-            print("cls_weights shape {}".format(cls_weights.shape))
             cls_weights = torch.squeeze(cls_weights, dim=-1)
             # token represnetation
             query_sequence_tokens = query_outputs[0]
             query_sequence_tokens = self.dropout(query_sequence_tokens)
             query_sequence_reps = self.query_proj(query_sequence_tokens)
-            print("query_sequence_tokens shape {}".format(query_sequence_tokens.shape))
-            print('query sequence reps shape {}'.format(query_sequence_reps.shape))
             alphas = torch.nn.functional.softmax(cls_weights, dim=0)  # calculate probabilities for history attention scores.
             alphas = torch.unsqueeze(alphas, dim=-1)
             alphas = torch.unsqueeze(alphas, dim=-1)
@@ -966,6 +961,7 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
             print("alpha  values {}".format(alphas))
             dense_representation = torch.sum(query_sequence_reps * alphas, dim=0)
             print("dense representation shape {}".format(dense_representation.shape))
+            dense_representation = torch.mean(dense_representation, dim=0, keepdim=True)
             output.append(dense_representation)
         output = torch.cat(output, dim=0)
         return output

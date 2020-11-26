@@ -355,9 +355,9 @@ def retriever_convert_example_to_feature(example, tokenizer,
     logger.info("guid: %s" % (example.guid))
     if example.sub_guid is not None:
         logger.info("sub_guid: %s" % (example.sub_guid))
-    logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
-    logger.info("attention_mask: %s" % " ".join([str(x) for x in attention_mask]))
-    logger.info("token_type_ids: %s" % " ".join([str(x) for x in token_type_ids]))
+    # logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
+    # logger.info("attention_mask: %s" % " ".join([str(x) for x in attention_mask]))
+    # logger.info("token_type_ids: %s" % " ".join([str(x) for x in token_type_ids]))
     logger.info("label: %s" % (example.label))
 
     feature = RetrieverInputFeatures(input_ids=np.asarray(input_ids),
