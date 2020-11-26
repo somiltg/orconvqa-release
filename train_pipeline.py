@@ -532,7 +532,7 @@ def retrieve(args, qids, qid_to_idx, query_reps,
                 pidx_for_reader[i][-1] = positive_pidx
         labels_for_reader = qrels_sparse_matrix[qidx_expanded, pidx_for_reader].toarray()
         # print('labels_for_reader after', labels_for_reader)
-        assert np.sum(labels_for_reader) >= len(labels_for_reader)
+        # assert np.sum(labels_for_reader) >= len(labels_for_reader)
     # print('labels_for_reader after', labels_for_reader)
     pids_for_reader = passage_ids[pidx_for_reader]
     # print('pids_for_reader', pids_for_reader)
