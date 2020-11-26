@@ -902,12 +902,6 @@ class AlbertForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
             # Make sure we are able to load base models as well as derived models (with heads)
             start_prefix = ''
             model_to_load = model
-#             if not hasattr(model, cls.base_model_prefix) and any(s.startswith(cls.base_model_prefix) for s in state_dict.keys()):
-#                 start_prefix = cls.base_model_prefix + '.'
-#             if hasattr(model, cls.base_model_prefix) and not any(s.startswith(cls.base_model_prefix) for s in state_dict.keys()):
-#                 model_to_load = getattr(model, cls.base_model_prefix)
-
-#             load(model_to_load, prefix=start_prefix)
             load(model_to_load, prefix='')
             if len(missing_keys) > 0:
                 logger.info("Weights of {} not initialized from pretrained model: {}".format(
@@ -940,7 +934,6 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
     def preprocess_sub_batch(self, query_input_ids, query_attention_mask, query_token_type_ids):
         output = []
         for i in range(len(query_input_ids)):
-            print("query input id shape for i {} is  {}".format(i, query_input_ids[i].shape))
             query_outputs = self.query_encoder(query_input_ids[i],
                                                attention_mask=query_attention_mask[i],  # (11, 512)
                                                token_type_ids=query_token_type_ids[i])
@@ -963,18 +956,13 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
         output = torch.cat(output, dim=0)
         return output
 
-
     def forward(self, query_input_ids=None, query_attention_mask=None, query_token_type_ids=None,
                 passage_input_ids=None, passage_attention_mask=None, passage_token_type_ids=None,
                 retrieval_label=None, query_rep=None, passage_rep=None):
         outputs = ()
 
         if query_input_ids is not None and len(query_input_ids) > 0:
-            print("len of query input ids {}".format(len(query_input_ids)))
-            print("len of query attention mask {}".format(len(query_attention_mask)))
-            print("len of query_token_type_ids{}".format(len(query_token_type_ids)))
             dense_representation = self.preprocess_sub_batch(query_input_ids, query_attention_mask, query_token_type_ids)
-            print("updated dimension {}".format(dense_representation.shape))
             outputs = (dense_representation, ) + outputs
 
         if passage_input_ids is not None:
@@ -992,10 +980,7 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
             retrieval_logits = torch.matmul(query_rep, passage_rep_t)  # batch_size, batch_size
             retrieval_label = torch.arange(query_rep.size(0), device=query_rep.device,
                                            dtype=retrieval_label.dtype)  # batch size
-            # print('retrieval_label after', retrieval_label.size(), retrieval_label)
             retrieval_loss_fct = CrossEntropyLoss()
-            # print('retrieval_logits', retrieval_logits.size(), retrieval_logits)
-            # print('retrieval_label', retrieval_label.size(), retrieval_label)
             retrieval_loss = retrieval_loss_fct(retrieval_logits, retrieval_label)
             outputs = (retrieval_loss,) + outputs
 
@@ -1009,12 +994,8 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
             retrieval_logits = query_rep * passage_rep  # batch_size, num_blocks, proj_size
             retrieval_logits = torch.sum(retrieval_logits, dim=-1)  # batch_size, num_blocks
             retrieval_probs = F.softmax(retrieval_logits, dim=1)
-            # print('retrieval_label before', retrieval_label.size(), retrieval_label)
             retrieval_label = retrieval_label.squeeze(-1).argmax(dim=1)
-            # print('retrieval_label after', retrieval_label.size(), retrieval_label)
             retrieval_loss_fct = CrossEntropyLoss()
-            # print('retrieval_logits', retrieval_logits.size(), retrieval_logits)
-            # print('retrieval_label', retrieval_label.size(), retrieval_label)
             retrieval_loss = retrieval_loss_fct(retrieval_logits, retrieval_label)
             outputs = (retrieval_loss,) + outputs
 

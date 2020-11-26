@@ -192,10 +192,6 @@ class RetrieverDataset(Dataset):
                             input_ids.append(turn_query_feature.input_ids)
                             token_type_ids.append(turn_query_feature.token_type_ids)
                             attention_mask.append(turn_query_feature.attention_mask)
-                        print("len of input ids {} token type ids {} and attention mask {}".format(len(input_ids), len(token_type_ids), len(attention_mask)))
-                        print("input ids {}".format(input_ids))
-                        print("token type ids {}".format(token_type_ids))
-                        print("attention masks {}".format(attention_mask))
                         query_feature = RetrieverInputFeatures(np.vstack(input_ids), np.vstack(token_type_ids), np.vstack(attention_mask), None)
                 else:
                     # Use the prepending technique
@@ -368,10 +364,10 @@ def retriever_convert_example_to_feature(example, tokenizer,
     logger.info("guid: %s" % (example.guid))
     if example.sub_guid is not None:
         logger.info("sub_guid: %s" % (example.sub_guid))
-    logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
+    # logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
     # logger.info("attention_mask: %s" % " ".join([str(x) for x in attention_mask]))
     # logger.info("token_type_ids: %s" % " ".join([str(x) for x in token_type_ids]))
-    logger.info("label: %s" % (example.label))
+    # logger.info("label: %s" % (example.label))
 
     feature = RetrieverInputFeatures(input_ids=np.asarray(input_ids),
                           attention_mask=np.asarray(attention_mask),
