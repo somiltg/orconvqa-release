@@ -499,6 +499,9 @@ def retrieve(args, qids, qid_to_idx, query_reps,
     qidx_expanded = np.expand_dims(qidx, axis=1)
     qidx_expanded = np.repeat(qidx_expanded, args.top_k_for_retriever, axis=1)
     labels_for_retriever = qrels_sparse_matrix[qidx_expanded, pidx_for_retriever].toarray()
+    print("qid expanded  {}".format(qidx_expanded))
+    print("pid retriever {}".format(pidx_for_retriever))
+    print("label for retriever {}".format(labels_for_retriever))
     # print('labels_for_retriever before', labels_for_retriever)
     if include_positive_passage:
         for i, (qid, labels_per_query) in enumerate(zip(qids, labels_for_retriever)):
@@ -508,7 +511,7 @@ def retrieve(args, qids, qid_to_idx, query_reps,
                 positive_pidx = passage_id_to_idx[positive_pid]
                 pidx_for_retriever[i][-1] = positive_pidx
         labels_for_retriever = qrels_sparse_matrix[qidx_expanded, pidx_for_retriever].toarray()
-        # print('labels_for_retriever after', labels_for_retriever)
+        print('labels_for_retriever after', labels_for_retriever)
         #print("label for retriever {}".format(labels_for_retriever))
         assert np.sum(labels_for_retriever) >= len(labels_for_retriever)
     pids_for_retriever = passage_ids[pidx_for_retriever]
@@ -923,6 +926,9 @@ for i, (qid, v) in enumerate(qrels.items()):
         qrels_col_idx.append(passage_id_to_idx[pid])
 qrels_sparse_matrix = sp.sparse.csr_matrix(
     (qrels_data, (qrels_row_idx, qrels_col_idx)))
+
+print(qrels_sparse_matrix)
+
 
 evaluator = pytrec_eval.RelevanceEvaluator(qrels, {'recip_rank', 'recall'})
 
