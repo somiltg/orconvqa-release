@@ -972,7 +972,7 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
                 retrieval_label=None, query_rep=None, passage_rep=None):
         outputs = ()
 
-        if query_input_ids is not None:
+        if query_input_ids is not None and len(query_input_ids) > 0:
             output = []
             print("len of query input ids {}".format(len(query_input_ids)))
             print("len of query attention mask {}".format(len(query_attention_mask)))
@@ -991,7 +991,7 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
             # print(passage_rep[:, 0])
             outputs = (passage_rep,) + outputs
 
-        if query_input_ids is not None and passage_input_ids is not None:
+        if query_input_ids is not None and len(query_input_ids) > 0 and passage_input_ids is not None:
             passage_rep_t = passage_rep.transpose(0, 1)  # proj_size, batch_size (128, batch_size)
             retrieval_logits = torch.matmul(query_rep, passage_rep_t)  # batch_size, batch_size
             retrieval_label = torch.arange(query_rep.size(0), device=query_rep.device,
@@ -1003,7 +1003,7 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
             retrieval_loss = retrieval_loss_fct(retrieval_logits, retrieval_label)
             outputs = (retrieval_loss,) + outputs
 
-        if query_input_ids is not None and passage_rep is not None and retrieval_label is not None and len(
+        if query_input_ids is not None and len(query_input_ids) > 0 and passage_rep is not None and retrieval_label is not None and len(
                 passage_rep.size()) == 3:
             dense_representation = self.preprocess_sub_batch(query_input_ids, query_attention_mask, query_token_type_ids)
             batch_size, num_blocks, proj_size = passage_rep.size()
