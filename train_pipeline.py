@@ -493,6 +493,11 @@ def retrieve(args, qids, qid_to_idx, query_reps,
              gpu_index, include_positive_passage=False):
     query_reps = query_reps.detach().cpu().numpy()
     D, I = gpu_index.search(query_reps, args.top_k_for_retriever)
+    print("query_reps {}".format(query_reps.shape))
+    print("D {}".format(D))
+    print("I {}".format(I))
+    print("D shape {}".format(D.shape))
+    print("I shape {}".format(I.shape))
     print("qids length {}".format(len(qids)))
     pidx_for_retriever = np.copy(I)
     qidx = [qid_to_idx[qid] for qid in qids]
