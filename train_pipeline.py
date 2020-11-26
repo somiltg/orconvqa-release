@@ -385,12 +385,11 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
                                      passage_ids, passage_id_to_idx, passage_reps,
                                      qrels, qrels_sparse_matrix,
                                      gpu_index, include_positive_passage=False)
-        print("retrieval results {}".format(retrieval_results))
         retriever_probs = retrieval_results['retriever_probs']
         pids_for_reader = retrieval_results['pids_for_reader']
         passages_for_reader = retrieval_results['passages_for_reader']
         labels_for_reader = retrieval_results['labels_for_reader']
-
+        print("reached reader features")
         reader_batch, batch_examples, batch_features = gen_reader_features(qids, question_texts, answer_texts,
                                                                            answer_starts, pids_for_reader,
                                                                            passages_for_reader, labels_for_reader,
@@ -400,13 +399,17 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
         example_ids = reader_batch['example_id']
         examples.update(batch_examples)
         features.update(batch_features)
+        print("before reader features batch creations")
         reader_batch = {k: v.to(args.device)
                         for k, v in reader_batch.items() if k != 'example_id'}
+        print("after reader features batch creations")
         with torch.no_grad():
             inputs = {'input_ids': reader_batch['input_ids'],
                       'attention_mask': reader_batch['input_mask'],
                       'token_type_ids': reader_batch['segment_ids']}
+            print("before reader model gets called")
             outputs = model.reader(**inputs)
+            print("after reader mode")
 
         retriever_probs = retriever_probs.reshape(-1).tolist()
         for i, example_id in enumerate(example_ids):

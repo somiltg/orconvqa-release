@@ -360,10 +360,10 @@ def retriever_convert_example_to_feature(example, tokenizer,
     assert len(attention_mask) == max_length, "Error with input length {} vs {}".format(len(attention_mask), max_length)
     assert len(token_type_ids) == max_length, "Error with input length {} vs {}".format(len(token_type_ids), max_length)
 
-    logger.info("*** Example ***")
-    logger.info("guid: %s" % (example.guid))
-    if example.sub_guid is not None:
-        logger.info("sub_guid: %s" % (example.sub_guid))
+    # logger.info("*** Example ***")
+    # logger.info("guid: %s" % (example.guid))
+    # if example.sub_guid is not None:
+    #   logger.info("sub_guid: %s" % (example.sub_guid))
     # logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
     # logger.info("attention_mask: %s" % " ".join([str(x) for x in attention_mask]))
     # logger.info("token_type_ids: %s" % " ".join([str(x) for x in token_type_ids]))
