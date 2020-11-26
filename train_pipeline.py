@@ -331,7 +331,6 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
         eval_file = args.dev_file
         orig_eval_file = args.orig_dev_file
     pytrec_eval_evaluator = evaluator
-    print("inside evaluate before dataset loader")
     # dataset, examples, features = load_and_cache_examples(args, tokenizer, evaluate=True, output_examples=True)
     DatasetClass = RetrieverDataset
     dataset = DatasetClass(eval_file, retriever_tokenizer,
@@ -342,7 +341,6 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
                            given_passage=False,
                            include_first_for_retriever=args.include_first_for_retriever,
                            history_attention_selection_enabled_for_retriever=args.enable_retrieval_history_selection)
-    print("inside evaluate after dataset loader")
     if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:
         os.makedirs(args.output_dir)
     predict_dir = os.path.join(args.output_dir, 'predictions')
@@ -353,17 +351,9 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
     # Note that DistributedSampler samples randomly
     # eval_sampler = SequentialSampler(
     #     dataset) if args.local_rank == -1 else DistributedSampler(dataset)
-    print("inside evaluate before dataloader")
-    '''
-    train_sampler = RandomSampler(
-        train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
-    train_dataloader = DataLoader(
-        train_dataset, sampler=train_sampler, batch_size=args.train_batch_size, num_workers=args.num_workers)
-    '''
 
     eval_sampler = SequentialSampler(dataset)
     eval_dataloader = DataLoader(dataset, sampler=eval_sampler, batch_size=args.eval_batch_size, num_workers=args.num_workers)
-    print("inside evaluate after dataloader")
     # multi-gpu evaluate
     if args.n_gpu > 1:
         model = torch.nn.DataParallel(model)
@@ -387,7 +377,6 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
         answer_starts = np.asarray(
             batch['answer_start']).reshape(-1).tolist()
         query_reps = gen_query_reps(args, model, batch)
-        print("query reps shape {}".format(query_reps.shape))
         retrieval_results = retrieve(args, qids, qid_to_idx, query_reps,
                                      passage_ids, passage_id_to_idx, passage_reps,
                                      qrels, qrels_sparse_matrix,
@@ -396,7 +385,6 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
         pids_for_reader = retrieval_results['pids_for_reader']
         passages_for_reader = retrieval_results['passages_for_reader']
         labels_for_reader = retrieval_results['labels_for_reader']
-        print("reached reader features")
         reader_batch, batch_examples, batch_features = gen_reader_features(qids, question_texts, answer_texts,
                                                                            answer_starts, pids_for_reader,
                                                                            passages_for_reader, labels_for_reader,
@@ -406,29 +394,22 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
         example_ids = reader_batch['example_id']
         examples.update(batch_examples)
         features.update(batch_features)
-        print("before reader features batch creations")
         reader_batch = {k: v.to(args.device)
                         for k, v in reader_batch.items() if k != 'example_id'}
-        print("after reader features batch creations")
         with torch.no_grad():
             inputs = {'input_ids': reader_batch['input_ids'],
                       'attention_mask': reader_batch['input_mask'],
                       'token_type_ids': reader_batch['segment_ids']}
-            print("before reader model gets called")
             outputs = model.reader(**inputs)
-            print("after reader mode")
 
         retriever_probs = retriever_probs.reshape(-1).tolist()
-        print("retriever probs shape {}".format(len(retriever_probs)))
         for i, example_id in enumerate(example_ids):
             result = RawResult(unique_id=example_id,
                                start_logits=to_list(outputs[0][i]),
                                end_logits=to_list(outputs[1][i]),
                                retrieval_logits=to_list(outputs[2][i]),
                                retriever_prob=retriever_probs[i])
-            print("result i {}".format(example_id))
             all_results.append(result)
-        print("all results {}".format(len(all_results)))
 
     evalTime = timeit.default_timer() - start_time
     logger.info("  Evaluation done in total %f secs (%f sec per example)",
