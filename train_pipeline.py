@@ -505,8 +505,8 @@ def retrieve(args, qids, qid_to_idx, query_reps,
                 pidx_for_retriever[i][-1] = positive_pidx
         labels_for_retriever = qrels_sparse_matrix[qidx_expanded, pidx_for_retriever].toarray()
         # print('labels_for_retriever after', labels_for_retriever)
-        print("label for retriever {}".format(labels_for_retriever))
-        assert np.sum(labels_for_retriever) >= len(labels_for_retriever)
+        #print("label for retriever {}".format(labels_for_retriever))
+        #assert np.sum(labels_for_retriever) >= len(labels_for_retriever)
     pids_for_retriever = passage_ids[pidx_for_retriever]
     passage_reps_for_retriever = passage_reps[pidx_for_retriever]
 
@@ -936,8 +936,7 @@ if args.do_train:
                                  given_passage=False,
                                  include_first_for_retriever=args.include_first_for_retriever,
                                  history_attention_selection_enabled_for_retriever=args.enable_retrieval_history_selection)
-    global_step, tr_loss = train(
-        args, train_dataset, model, retriever_tokenizer, reader_tokenizer)
+    global_step, tr_loss = train(args, train_dataset, model, retriever_tokenizer, reader_tokenizer)
     logger.info(" global_step = %s, average loss = %s",
                 global_step, tr_loss)
 

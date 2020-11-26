@@ -221,7 +221,8 @@ class BertForOrconvqaGlobal(BertPreTrainedModel):
             outputs = (total_loss, qa_loss, retrieval_loss,) + outputs
 
         return outputs  # (loss), start_logits, end_logits, (hidden_states), (attentions)
-    
+
+
 class AlbertForOrconvqaGlobal(AlbertPreTrainedModel):
     r"""
         **start_positions**: (`optional`) ``torch.LongTensor`` of shape ``(batch_size, num_blocks,)``:
