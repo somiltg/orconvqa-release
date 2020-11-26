@@ -331,7 +331,7 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
         eval_file = args.dev_file
         orig_eval_file = args.orig_dev_file
     pytrec_eval_evaluator = evaluator
-
+    print("inside evaluate before dataset loader")
     # dataset, examples, features = load_and_cache_examples(args, tokenizer, evaluate=True, output_examples=True)
     DatasetClass = RetrieverDataset
     dataset = DatasetClass(eval_file, retriever_tokenizer,
@@ -342,7 +342,7 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
                            given_passage=False,
                            include_first_for_retriever=args.include_first_for_retriever,
                            history_attention_selection_enabled_for_retriever=args.enable_retrieval_history_selection)
-
+    print("inside evaluate after dataset loader")
     if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:
         os.makedirs(args.output_dir)
     predict_dir = os.path.join(args.output_dir, 'predictions')
@@ -353,10 +353,10 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
     # Note that DistributedSampler samples randomly
     # eval_sampler = SequentialSampler(
     #     dataset) if args.local_rank == -1 else DistributedSampler(dataset)
+    print("inside evaluate before dataloader")
     eval_sampler = SequentialSampler(dataset)
-    eval_dataloader = DataLoader(
-        dataset, sampler=eval_sampler, batch_size=args.eval_batch_size, num_workers=args.num_workers)
-
+    eval_dataloader = DataLoader(dataset, sampler=eval_sampler, batch_size=args.eval_batch_size, num_workers=args.num_workers)
+    print("inside evaluate after dataloader")
     # multi-gpu evaluate
     if args.n_gpu > 1:
         model = torch.nn.DataParallel(model)
@@ -380,10 +380,12 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
         answer_starts = np.asarray(
             batch['answer_start']).reshape(-1).tolist()
         query_reps = gen_query_reps(args, model, batch)
+        print("query reps shape {}".format(query_reps.shape))
         retrieval_results = retrieve(args, qids, qid_to_idx, query_reps,
                                      passage_ids, passage_id_to_idx, passage_reps,
                                      qrels, qrels_sparse_matrix,
                                      gpu_index, include_positive_passage=False)
+        print("retrieval results {}".format(retrieval_results))
         retriever_probs = retrieval_results['retriever_probs']
         pids_for_reader = retrieval_results['pids_for_reader']
         passages_for_reader = retrieval_results['passages_for_reader']
@@ -1011,7 +1013,7 @@ if args.do_eval and args.local_rank in [-1, 0]:
         model.reader = reader_model_class.from_pretrained(
             os.path.join(checkpoint, 'reader'), force_download=True)
         model.to(args.device)
-
+        print("before evaluation")
         # Evaluate
         result = evaluate(args, model, retriever_tokenizer,
                           reader_tokenizer, prefix=global_step)
