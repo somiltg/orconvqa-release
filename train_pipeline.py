@@ -505,6 +505,10 @@ def retrieve(args, qids, qid_to_idx, query_reps,
     # print('labels_for_retriever before', labels_for_retriever)
     if include_positive_passage:
         for i, (qid, labels_per_query) in enumerate(zip(qids, labels_for_retriever)):
+            print("qid length in retriever {}".format(len(qid)))
+            print("qid in retriever {}".format(qid))
+            print("labels per query len {}".format(len(labels_per_query)))
+            print("labels per query  {}".format(labels_per_query))
             has_positive = np.sum(labels_per_query)
             if not has_positive:
                 positive_pid = list(qrels[qid].keys())[0]
