@@ -959,7 +959,8 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
             query_sequence_reps = self.query_proj(query_sequence_tokens)
             print("query_sequence_tokens shape {}".format(query_sequence_tokens.shape))
             print('query sequence reps shape {}'.format(query_sequence_reps.shape))
-            alphas = torch.nn.functional.softmax(cls_weights)  # calculate probabilities for history attention scores.
+            alphas = torch.nn.functional.softmax(cls_weights, dim=0)  # calculate probabilities for history attention scores.
+            print("alpha  values {}".format(alphas))
             dense_representation = torch.sum(query_sequence_reps * alphas, dim=1)
             print("dense representation shape {}".format(dense_representation.shape))
             output.append(dense_representation)
