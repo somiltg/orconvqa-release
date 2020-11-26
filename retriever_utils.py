@@ -174,21 +174,29 @@ class RetrieverDataset(Dataset):
                     # Use selection mechanism, form a list of features for each conversation turn
                     input_ids, token_type_ids, attention_mask = [], [], []
                     print("len of history {} for qid {}".format(len(history), qas_id))
-                    for turn_num in range(len(history)):
-                        augmented_turn_text = get_prepended_history_question([], history[turn_num]['question'])
-                        turn_example = RetrieverInputExample(guid=qas_id, text_a=orig_question_text,
-                                                             text_b=augmented_turn_text,
-                                                             sub_guid=len(history) - turn_num)
+                    if len(history) == 0:
+                        turn_example = RetrieverInputExample(guid=qas_id, text_a=orig_question_text)
                         turn_query_feature = retriever_convert_example_to_feature(turn_example, self._tokenizer,
-                                                                             max_length=self._query_max_seq_length)
-                        input_ids.append(turn_query_feature.input_ids)
-                        token_type_ids.append(turn_query_feature.token_type_ids)
-                        attention_mask.append(turn_query_feature.attention_mask)
-                    print("len of input ids {} token type ids {} and attention mask {}".format(len(input_ids), len(token_type_ids), len(attention_mask)))
-                    print("input ids {}".format(input_ids))
-                    print("token type ids {}".format(token_type_ids))
-                    print("attention masks {}".format(attention_mask))
-                    query_feature = RetrieverInputFeatures(np.vstack(input_ids), np.vstack(token_type_ids), np.vstack(attention_mask), None)
+                                                                                  max_length=self._query_max_seq_length)
+                        query_feature = RetrieverInputFeatures(np.expand_dims(turn_query_feature.input_ids, 0),
+                                                               np.expand_dims(turn_query_feature.token_type_ids, 0),
+                                                               np.expand_dims(turn_query_feature.attention_mask, 0), None)
+                    else:
+                        for turn_num in range(len(history)):
+                            augmented_turn_text = get_prepended_history_question([], history[turn_num]['question'])
+                            turn_example = RetrieverInputExample(guid=qas_id, text_a=orig_question_text,
+                                                                 text_b=augmented_turn_text,
+                                                                 sub_guid=len(history) - turn_num)
+                            turn_query_feature = retriever_convert_example_to_feature(turn_example, self._tokenizer,
+                                                                                 max_length=self._query_max_seq_length)
+                            input_ids.append(turn_query_feature.input_ids)
+                            token_type_ids.append(turn_query_feature.token_type_ids)
+                            attention_mask.append(turn_query_feature.attention_mask)
+                        print("len of input ids {} token type ids {} and attention mask {}".format(len(input_ids), len(token_type_ids), len(attention_mask)))
+                        print("input ids {}".format(input_ids))
+                        print("token type ids {}".format(token_type_ids))
+                        print("attention masks {}".format(attention_mask))
+                        query_feature = RetrieverInputFeatures(np.vstack(input_ids), np.vstack(token_type_ids), np.vstack(attention_mask), None)
                 else:
                     # Use the prepending technique
                     question_text_for_retriever = get_prepended_history_question(

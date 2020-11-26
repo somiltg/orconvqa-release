@@ -971,7 +971,6 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
 
         if query_input_ids is not None and len(query_input_ids) > 0:
             print("len of query input ids {}".format(len(query_input_ids)))
-            print("query_input_ids {}".format(query_input_ids))
             print("len of query attention mask {}".format(len(query_attention_mask)))
             print("len of query_token_type_ids{}".format(len(query_token_type_ids)))
             dense_representation = self.preprocess_sub_batch(query_input_ids, query_attention_mask, query_token_type_ids)
@@ -1024,97 +1023,6 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
 
 class Pipeline(nn.Module):
     def __init__(self):
-        logger.info("bhai m constructor hu")
         super(Pipeline, self).__init__()
         self.reader = None
         self.retriever = None
-
-    
-# class QueryEncoder(BertPreTrainedModel):
-#     r"""
-    
-#     """
-#     def __init__(self, config):
-#         super(QueryEncoder, self).__init__(config)
-
-#         self.query_encoder = BertModel(config)
-#         self.query_proj = nn.Linear(config.hidden_size, config.proj_size)        
-#         self.dropout = nn.Dropout(config.hidden_dropout_prob)
-#         self.proj_size = config.proj_size
-        
-#         self.init_weights()
-
-#     def forward(self, query_input_ids=None, query_attention_mask=None, query_token_type_ids=None):
-
-#         query_outputs = self.query_encoder(query_input_ids,
-#                             attention_mask=query_attention_mask,
-#                             token_type_ids=query_token_type_ids)
-
-#         query_pooled_output = query_outputs[1]
-#         query_pooled_output = self.dropout(query_pooled_output)
-#         query_rep = self.query_proj(query_pooled_output) # batch_size, proj_size            
-#         outputs = (query_rep, ) + query_outputs[2:]
-        
-#         return outputs
-    
-# class PassageEncoder(BertPreTrainedModel):
-#     r"""
-    
-#     """
-#     def __init__(self, config):
-#         super(PassageEncoder, self).__init__(config)
-        
-#         self.passage_encoder = BertModel(config)
-#         self.passage_proj = nn.Linear(config.hidden_size, config.proj_size)
-#         self.proj_size = config.proj_size       
-#         self.dropout = nn.Dropout(config.hidden_dropout_prob)
-        
-#         self.init_weights()
-
-#     def forward(self, passage_input_ids=None, passage_attention_mask=None, 
-#                 passage_token_type_ids=None, retrieval_label=None):
-        
-#         batch_size, num_blocks, seq_len = passage_input_ids.size()
-#         passage_input_ids = passage_input_ids.view(-1, seq_len) # batch_size * num_blocks, seq_len
-#         passage_attention_mask = passage_attention_mask.view(-1, seq_len)
-#         passage_token_type_ids = passage_token_type_ids.view(-1, seq_len) 
-
-#         passage_outputs = self.passage_encoder(passage_input_ids,
-#                             attention_mask=passage_attention_mask,
-#                             token_type_ids=passage_token_type_ids) 
-
-#         passage_pooled_output = passage_outputs[1] 
-#         passage_pooled_output = self.dropout(passage_pooled_output)
-#         passage_rep = self.passage_proj(passage_pooled_output) # batch_size * num_blocks, proj_size
-#         passage_rep = passage_rep.view(batch_size, num_blocks, -1) # batch_size, num_blocks, proj_size
-
-#         outputs = (passage_rep, ) + passage_outputs[2:]
-        
-#         return outputs
-    
-# class Retriever(nn.Module):
-#     r"""
-    
-#     """
-
-#     def forward(self, query_rep, passage_rep, retrieval_label=None):
-#         batch_size, num_blocks, proj_size = passage_rep.size()
-#         query_rep = query_rep.unsqueeze(-1) # query_rep (batch_size, proj_size, 1)
-#         query_rep = query_rep.expand(batch_size, proj_size, num_blocks) # batch_size, proj_size, num_blocks)
-#         query_rep = query_rep.transpose(1, 2) # query_rep (batch_size, num_blocks, proj_size)
-#         retrieval_logits = query_rep * passage_rep # batch_size, num_blocks, proj_size
-#         retrieval_logits = torch.sum(retrieval_logits, dim=-1) # batch_size, num_blocks
-#         retrieval_probs = F.softmax(retrieval_logits, dim=1)
-        
-#         if retrieval_label is not None:
-#             retrieval_label = retrieval_label.squeeze(-1).argmax(dim=1)
-#             retrieval_loss_fct = CrossEntropyLoss()
-#             retrieval_loss = retrieval_loss_fct(retrieval_logits, retrieval_label)
-
-#             retrieval_logits = retrieval_logits.view(-1)
-#             outputs = (retrieval_loss, retrieval_logits, retrieval_probs)
-#         else:
-#             retrieval_logits = retrieval_logits.view(-1)
-#             outputs = (retrieval_logits, retrieval_probs)
-
-#         return outputs

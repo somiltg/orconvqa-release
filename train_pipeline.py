@@ -171,16 +171,12 @@ def train(args, train_dataset, model, retriever_tokenizer, reader_tokenizer):
         for step, batch in enumerate(epoch_iterator):
             model.eval()  # we first get query representations in eval mode
             qids = np.asarray(batch['qid']).reshape(-1).tolist()
-            print('qids', qids)
             question_texts = np.asarray(
                 batch['question_text']).reshape(-1).tolist()
-            # print('question_texts', question_texts)
             answer_texts = np.asarray(
                 batch['answer_text']).reshape(-1).tolist()
-            # print('answer_texts', answer_texts)
             answer_starts = np.asarray(
                 batch['answer_start']).reshape(-1).tolist()
-            # print('answer_starts', answer_starts)
             query_reps = gen_query_reps(args, model, batch)
             print("query reps shape {}".format(query_reps.shape))
             retrieval_results = retrieve(args, qids, qid_to_idx, query_reps,
@@ -191,7 +187,6 @@ def train(args, train_dataset, model, retriever_tokenizer, reader_tokenizer):
             labels_for_retriever = retrieval_results['labels_for_retriever']
 
             pids_for_reader = retrieval_results['pids_for_reader']
-            # print(pids_for_reader)
             passages_for_reader = retrieval_results['passages_for_reader']
             labels_for_reader = retrieval_results['labels_for_reader']
 
@@ -379,7 +374,6 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
     for batch in tqdm(eval_dataloader, desc="Evaluating"):
         model.eval()
         qids = np.asarray(batch['qid']).reshape(-1).tolist()
-        # print(qids)
         question_texts = np.asarray(
             batch['question_text']).reshape(-1).tolist()
         answer_texts = np.asarray(
@@ -392,7 +386,6 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
                                      qrels, qrels_sparse_matrix,
                                      gpu_index, include_positive_passage=False)
         retriever_probs = retrieval_results['retriever_probs']
-        # print('retriever_probs before', retriever_probs)
         pids_for_reader = retrieval_results['pids_for_reader']
         passages_for_reader = retrieval_results['passages_for_reader']
         labels_for_reader = retrieval_results['labels_for_reader']
@@ -404,7 +397,6 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
                                                                            args.reader_max_seq_length,
                                                                            is_training=False)
         example_ids = reader_batch['example_id']
-        # print('example_ids', example_ids)
         examples.update(batch_examples)
         features.update(batch_features)
         reader_batch = {k: v.to(args.device)
@@ -416,7 +408,6 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
             outputs = model.reader(**inputs)
 
         retriever_probs = retriever_probs.reshape(-1).tolist()
-        # print('retriever_probs after', retriever_probs)
         for i, example_id in enumerate(example_ids):
             result = RawResult(unique_id=example_id,
                                start_logits=to_list(outputs[0][i]),
@@ -493,37 +484,19 @@ def retrieve(args, qids, qid_to_idx, query_reps,
              gpu_index, include_positive_passage=False):
     query_reps = query_reps.detach().cpu().numpy()
     D, I = gpu_index.search(query_reps, args.top_k_for_retriever)
-    # print("query_reps {}".format(query_reps.shape))
-    # print("D {}".format(D))
-    # print("I {}".format(I))
-    # print("D shape {}".format(D.shape))
-    # print("I shape {}".format(I.shape))
-    # print("qids length {}".format(len(qids)))
     pidx_for_retriever = np.copy(I)
     qidx = [qid_to_idx[qid] for qid in qids]
     qidx_expanded = np.expand_dims(qidx, axis=1)
     qidx_expanded = np.repeat(qidx_expanded, args.top_k_for_retriever, axis=1)
     labels_for_retriever = qrels_sparse_matrix[qidx_expanded, pidx_for_retriever].toarray()
-    # print("qid expanded  {}".format(qidx_expanded))
-    # print("pid retriever {}".format(pidx_for_retriever))
-    # print("label for retriever {}".format(labels_for_retriever))
-    # print('labels_for_retriever before', labels_for_retriever)
     if include_positive_passage:
         for i, (qid, labels_per_query) in enumerate(zip(qids, labels_for_retriever)):
-            # print("qid length in retriever {}".format(len(qid)))
-            # print("qid in retriever {}".format(qid))
-            # print("labels per query len {}".format(len(labels_per_query)))
-            # print("labels per query  {}".format(labels_per_query))
             has_positive = np.sum(labels_per_query)
             if not has_positive:
                 positive_pid = list(qrels[qid].keys())[0]
-                # print("positive pid {}".format(positive_pid))
                 positive_pidx = passage_id_to_idx[positive_pid]
-                # print("positive pidx {}".format(positive_pidx))
                 pidx_for_retriever[i][-1] = positive_pidx
         labels_for_retriever = qrels_sparse_matrix[qidx_expanded, pidx_for_retriever].toarray()
-        # print('labels_for_retriever after', labels_for_retriever)
-        #print("label for retriever {}".format(labels_for_retriever))
         assert np.sum(labels_for_retriever) >= len(labels_for_retriever)
     pids_for_retriever = passage_ids[pidx_for_retriever]
     passage_reps_for_retriever = passage_reps[pidx_for_retriever]
@@ -531,16 +504,9 @@ def retrieve(args, qids, qid_to_idx, query_reps,
     scores = D[:, :args.top_k_for_reader]
     retriever_probs = sp.special.softmax(scores, axis=1)
     pidx_for_reader = I[:, :args.top_k_for_reader]
-    # print('pidx_for_reader', pidx_for_reader)
-    # print('qids', qids)
-    # print('qidx', qidx)
     qidx_expanded = np.expand_dims(qidx, axis=1)
     qidx_expanded = np.repeat(qidx_expanded, args.top_k_for_reader, axis=1)
-    # print('qidx_expanded', qidx_expanded)
-
     labels_for_reader = qrels_sparse_matrix[qidx_expanded, pidx_for_reader].toarray()
-    # print('labels_for_reader before', labels_for_reader)
-    # print('labels_for_reader before', labels_for_reader)
     if include_positive_passage:
         for i, (qid, labels_per_query) in enumerate(zip(qids, labels_for_reader)):
             has_positive = np.sum(labels_per_query)
@@ -549,11 +515,8 @@ def retrieve(args, qids, qid_to_idx, query_reps,
                 positive_pidx = passage_id_to_idx[positive_pid]
                 pidx_for_reader[i][-1] = positive_pidx
         labels_for_reader = qrels_sparse_matrix[qidx_expanded, pidx_for_reader].toarray()
-        # print('labels_for_reader after', labels_for_reader)
         assert np.sum(labels_for_reader) >= len(labels_for_reader)
-    # print('labels_for_reader after', labels_for_reader)
     pids_for_reader = passage_ids[pidx_for_reader]
-    # print('pids_for_reader', pids_for_reader)
     passages_for_reader = get_passages(pidx_for_reader, args)
     # we do not need to modify scores and probs matrices because they will only be
     # needed at evaluation, where include_positive_passage will be false
@@ -937,8 +900,6 @@ for i, (qid, v) in enumerate(qrels.items()):
         qrels_col_idx.append(passage_id_to_idx[pid])
 qrels_sparse_matrix = sp.sparse.csr_matrix(
     (qrels_data, (qrels_row_idx, qrels_col_idx)))
-
-print(qrels_sparse_matrix)
 
 
 evaluator = pytrec_eval.RelevanceEvaluator(qrels, {'recip_rank', 'recall'})
