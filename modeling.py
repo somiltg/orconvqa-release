@@ -942,7 +942,7 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
         outputs = ()
 
         if query_input_ids is not None:
-            output = None
+            output = []
             print("len of query input ids {}".format(len(query_input_ids)))
             print("len of query attention mask {}".format(len(query_attention_mask)))
             print("len of query_token_type_ids{}".format(len(query_token_type_ids)))
@@ -968,12 +968,14 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
                 alphas = torch.nn.functional.softmax(cls_weights) # calculate probabilities for history attention scores.
                 dense_representation = torch.sum(query_sequence_reps * alphas, dim=1)
                 print("dense representation shape {}".format(dense_representation.shape))
-                if output is None:
-                    output = dense_representation
-                else:
-                    output = torch.stack((output, dense_representation))
-                print("output shape {}".format(output.shape))
-            output = output.squeeze(dim=1)
+                output.append(dense_representation)
+                # if output is None:
+                #     output = dense_representation
+                # else:
+                #     output = torch.vstack((output, dense_representation))
+                # print("output shape {}".format(output.shape))
+            output = torch.vstack(output)
+            # output = output.squeeze(dim=1)
             print("updated dimension {}".format(output.shape))
             outputs = (output, ) + outputs
 
