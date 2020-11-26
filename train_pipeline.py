@@ -419,9 +419,9 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
                                end_logits=to_list(outputs[1][i]),
                                retrieval_logits=to_list(outputs[2][i]),
                                retriever_prob=retriever_probs[i])
-            print("result {}".format(result))
+            print("result i {}".format(example_id))
             all_results.append(result)
-        print("all results {}".format(all_results))
+        print("all results {}".format(len(all_results)))
 
     evalTime = timeit.default_timer() - start_time
     logger.info("  Evaluation done in total %f secs (%f sec per example)",
