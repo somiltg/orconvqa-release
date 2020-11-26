@@ -361,7 +361,7 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
         train_dataset, sampler=train_sampler, batch_size=args.train_batch_size, num_workers=args.num_workers)
     '''
 
-    eval_sampler = RandomSampler(dataset)
+    eval_sampler = SequentialSampler(dataset)
     eval_dataloader = DataLoader(dataset, sampler=eval_sampler, batch_size=args.eval_batch_size, num_workers=args.num_workers)
     print("inside evaluate after dataloader")
     # multi-gpu evaluate
