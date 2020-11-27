@@ -42,7 +42,8 @@ from utils import (LazyQuacDatasetGlobal, RawResult,
                    write_predictions, write_final_predictions,
                    get_retrieval_metrics, gen_reader_features)
 from retriever_utils import RetrieverDataset
-from modeling import Pipeline, AlbertForRetrieverOnlyPositivePassage, BertForOrconvqaGlobal, AlbertWithHAMForRetrieverOnlyPositivePassage
+from modeling import Pipeline, AlbertForRetrieverOnlyPositivePassage, BertForOrconvqaGlobal, \
+    AlbertWithHAMForRetrieverOnlyPositivePassage
 from scorer import quac_eval
 
 # In[2]:
@@ -56,6 +57,7 @@ MODEL_CLASSES = {
     'reader': (BertConfig, BertForOrconvqaGlobal, BertTokenizer),
     'retriever': (AlbertConfig, AlbertForRetrieverOnlyPositivePassage, AlbertTokenizer),
 }
+
 
 # In[3]:
 
@@ -198,7 +200,7 @@ def train(args, train_dataset, model, retriever_tokenizer, reader_tokenizer):
                       'retrieval_label': torch.from_numpy(labels_for_retriever).to(args.device),
                       'use_fine_grained_attention': args.use_fine_grained_attention,
                       'use_soft_attention_weights': args.use_soft_attention_weights,
-                      'device' : args.device}
+                      'device': args.device}
             retriever_outputs = model.retriever(**inputs)
             # model outputs are always tuple in transformers (see doc)
             retriever_loss = retriever_outputs[0]
@@ -357,7 +359,8 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
     #     dataset) if args.local_rank == -1 else DistributedSampler(dataset)
 
     eval_sampler = SequentialSampler(dataset)
-    eval_dataloader = DataLoader(dataset, sampler=eval_sampler, batch_size=args.eval_batch_size, num_workers=args.num_workers)
+    eval_dataloader = DataLoader(dataset, sampler=eval_sampler, batch_size=args.eval_batch_size,
+                                 num_workers=args.num_workers)
     # multi-gpu evaluate
     if args.n_gpu > 1:
         model = torch.nn.DataParallel(model)
@@ -750,7 +753,6 @@ parser.add_argument("--use_soft_attention_weights", default=True, type=str2bool,
                     help="whether to use soft attention during history selection for retriever. "
                          "Setting it to false would let equal weightage to all the turns.")
 
-
 args, unknown = parser.parse_known_args()
 
 if os.path.exists(args.output_dir) and os.listdir(args.output_dir) and args.do_train and not args.overwrite_output_dir:
@@ -808,14 +810,14 @@ HAM_BASED_MODEL_CLASSES = {
 }
 args.retriever_model_type = args.retriever_model_type.lower()
 
-
 args.retriever_model_type = args.retriever_model_type.lower()
 logger.info("retriever model")
 if args.enable_retrieval_history_selection:
     logger.info("Using HAM based retriever model")
     retriever_config_class, retriever_model_class, retriever_tokenizer_class = HAM_BASED_MODEL_CLASSES['retriever']
     logger.info("take pretrained model")
-    retriever_config = retriever_config_class.from_pretrained(args.retrieve_checkpoint, **{"type_vocab_size": args.max_considered_history_turns})
+    retriever_config = retriever_config_class.from_pretrained(args.retrieve_checkpoint,
+                                                              **{"type_vocab_size": args.max_considered_history_turns})
     assert retriever_config.type_vocab_size == args.max_considered_history_turns
 else:
     logger.info("Using prepending history based retriever model")
@@ -825,8 +827,14 @@ else:
 
 logger.info("will load pretrained retriever")
 # load pretrained retriever
+custom_config_for_retriever = {'config': retriever_config,
+                             'use_positional_segment_embedding': args.use_positional_segment_embedding,
+                             'max_history_turns': args.max_considered_history_turns}
+
 retriever_tokenizer = retriever_tokenizer_class.from_pretrained(args.retrieve_tokenizer_dir)
-retriever_model = retriever_model_class.from_pretrained(args.retrieve_checkpoint, force_download=True, **{'config': retriever_config})
+retriever_model = retriever_model_class.from_pretrained(args.retrieve_checkpoint,
+                                                        force_download=True,
+                                                        **custom_config_for_retriever)
 
 model.retriever = retriever_model
 # do not need and do not tune passage encoder
@@ -917,7 +925,6 @@ for i, (qid, v) in enumerate(qrels.items()):
 qrels_sparse_matrix = sp.sparse.csr_matrix(
     (qrels_data, (qrels_row_idx, qrels_col_idx)))
 
-
 evaluator = pytrec_eval.RelevanceEvaluator(qrels, {'recip_rank', 'recall'})
 
 # In[10]:
@@ -983,7 +990,7 @@ if args.do_train and (args.local_rank == -1 or torch.distributed.get_rank() == 0
     # Load a trained model and vocabulary that you have fine-tuned
     model = Pipeline()
     model.retriever = retriever_model_class.from_pretrained(
-        final_retriever_model_dir, force_download=True, **{'config': retriever_config})
+        final_retriever_model_dir, force_download=True, **custom_config_for_retriever)
     model.retriever.passage_encoder = None
     model.retriever.passage_proj = None
 
@@ -1022,7 +1029,7 @@ if args.do_eval and args.local_rank in [-1, 0]:
         print(global_step, 'global_step')
         model = Pipeline()
         model.retriever = retriever_model_class.from_pretrained(
-            os.path.join(checkpoint, 'retriever'), force_download=True, **{'config': retriever_config})
+            os.path.join(checkpoint, 'retriever'), force_download=True, **custom_config_for_retriever)
         model.retriever.passage_encoder = None
         model.retriever.passage_proj = None
         model.reader = reader_model_class.from_pretrained(
