@@ -896,7 +896,9 @@ class AlbertForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
                 print("embedding size {}".format(config.embedding_size))
                 print("proj size {}".format(config.proj_size))
                 query_default_emb = state_dict[query_emb_key_name]
-                query_default_emb = torch.cat((query_default_emb, torch.zeros(max_history_turns-query_default_emb.shape[0], config.embedding_size)), dim=0)
+                prev_size = query_default_emb.shape[0]
+                query_default_emb = query_default_emb.resize_((max_history_turns, config.embedding_size))
+                query_default_emb[prev_size:, :] = torch.zeros(max_history_turns-prev_size, config.embedding_size)
                 print("query default emb shape {}".format(query_default_emb.shape))
                 state_dict[query_emb_key_name] = query_default_emb
                 if passage_emb_key_name in state_dict.keys():
