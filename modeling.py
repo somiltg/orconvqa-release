@@ -675,7 +675,8 @@ class AlbertForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
 
     def forward(self, query_input_ids=None, query_attention_mask=None, query_token_type_ids=None, 
                 passage_input_ids=None, passage_attention_mask=None, passage_token_type_ids=None, 
-                retrieval_label=None, query_rep=None, passage_rep=None, use_fine_grained_attention=False, use_soft_attention_weights=False):
+                retrieval_label=None, query_rep=None, passage_rep=None, use_fine_grained_attention=False,
+                use_soft_attention_weights=False, device=None):
         outputs = ()
         
         if query_input_ids is not None:
@@ -928,11 +929,13 @@ class AlbertForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
 class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositivePassage):
     def __init__(self, config):
         super(AlbertWithHAMForRetrieverOnlyPositivePassage, self).__init__(config)
+        self.config = config
         self.ham_linear_layer = nn.Linear(config.proj_size, 1)
         self.init_weights()
 
-    def preprocess_sub_batch(self, query_input_ids, query_attention_mask, query_token_type_ids, use_fine_grained_attention=False, use_soft_attention_weights=True):
-        output = []
+    def preprocess_sub_batch(self, query_input_ids, query_attention_mask, query_token_type_ids,
+                             use_fine_grained_attention=False, use_soft_attention_weights=True, device=None):
+        output = torch.empty(len(query_input_ids), self.config.proj_size).to(device)
         for i in range(len(query_input_ids)):
             query_outputs = self.query_encoder(query_input_ids[i],
                                                attention_mask=query_attention_mask[i],  # (11, 512)
@@ -940,11 +943,12 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
             query_pooled_output = query_outputs[1]  # cls token (batch size, CLS representation size)
             query_pooled_output = self.dropout(query_pooled_output)  # apply dropout to CLS representation
             query_rep = self.query_proj(query_pooled_output)  # sub_batch_size, proj_size (number of queries, cls representation for each query)
-            cls_weights = self.ham_linear_layer(query_rep)  # cls weights: (sub_batch_size, 1)
-            cls_weights = torch.squeeze(cls_weights, dim=-1)
-            alphas = torch.nn.functional.softmax(cls_weights, dim=0)  # calculate probabilities for history attention scores.
-            if not use_soft_attention_weights:
-                alphas = torch.add(torch.mul(alphas, 0), 1/(query_rep.shape[0]))
+            if use_soft_attention_weights:
+                cls_weights = self.ham_linear_layer(query_rep)  # cls weights: (sub_batch_size, 1)
+                cls_weights = torch.squeeze(cls_weights, dim=-1)
+                alphas = torch.nn.functional.softmax(cls_weights, dim=0)  # calculate probabilities for history attention scores.
+            else:
+                alphas = torch.mul(torch.ones(query_rep.shape[0]), 1.0/(query_rep.shape[0])).to(device)
 
             # token representation
             if use_fine_grained_attention:
@@ -957,18 +961,19 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
             else:
                 alphas = alphas.view(alphas.shape[0], 1)
                 dense_representation = torch.sum(query_rep * alphas, dim=0, keepdim=True)
-            output.append(dense_representation)
-        output = torch.cat(output, dim=0)
+            output[i] = dense_representation
         return output
 
     def forward(self, query_input_ids=None, query_attention_mask=None, query_token_type_ids=None,
                 passage_input_ids=None, passage_attention_mask=None, passage_token_type_ids=None,
-                retrieval_label=None, query_rep=None, passage_rep=None, use_fine_grained_attention=False, use_soft_attention_weights=True):
+                retrieval_label=None, query_rep=None, passage_rep=None, use_fine_grained_attention=False,
+                use_soft_attention_weights=True, device=None):
         outputs = ()
 
         if query_input_ids is not None and len(query_input_ids) > 0:
             dense_representation = self.preprocess_sub_batch(query_input_ids, query_attention_mask, query_token_type_ids,
-                                                             use_fine_grained_attention, use_soft_attention_weights)
+                                                             use_fine_grained_attention, use_soft_attention_weights,
+                                                             device)
             outputs = (dense_representation, ) + outputs
 
         if passage_input_ids is not None:
@@ -993,7 +998,8 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
         if query_input_ids is not None and len(query_input_ids) > 0 and passage_rep is not None and retrieval_label is not None and len(
                 passage_rep.size()) == 3:
             dense_representation = self.preprocess_sub_batch(query_input_ids, query_attention_mask, query_token_type_ids,
-                                                             use_fine_grained_attention, use_soft_attention_weights)
+                                                             use_fine_grained_attention, use_soft_attention_weights,
+                                                             device)
             batch_size, num_blocks, proj_size = passage_rep.size()
             query_rep = dense_representation.unsqueeze(-1)  # query_rep (batch_size, proj_size, 1)
             query_rep = query_rep.expand(batch_size, self.proj_size, num_blocks)  # batch_size, proj_size, num_blocks)

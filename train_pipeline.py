@@ -197,7 +197,8 @@ def train(args, train_dataset, model, retriever_tokenizer, reader_tokenizer):
                       'passage_rep': torch.from_numpy(passage_reps_for_retriever).to(args.device),
                       'retrieval_label': torch.from_numpy(labels_for_retriever).to(args.device),
                       'use_fine_grained_attention': args.use_fine_grained_attention,
-                      'use_soft_attention_weights': args.use_soft_attention_weights}
+                      'use_soft_attention_weights': args.use_soft_attention_weights,
+                      'device' : args.device}
             retriever_outputs = model.retriever(**inputs)
             # model outputs are always tuple in transformers (see doc)
             retriever_loss = retriever_outputs[0]
@@ -469,6 +470,7 @@ def gen_query_reps(args, model, batch):
         inputs['query_token_type_ids'] = batch['query_token_type_ids']
         inputs['use_fine_grained_attention'] = args.use_fine_grained_attention
         inputs['use_soft_attention_weights'] = args.use_soft_attention_weights
+        inputs['device'] = args.device
         outputs = model.retriever(**inputs)
         query_reps = outputs[0]
 
