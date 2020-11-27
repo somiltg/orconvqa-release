@@ -954,7 +954,6 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
             else:
                 alphas = alphas.view(alphas.shape[0], 1)
                 dense_representation = torch.sum(query_rep * alphas, dim=0, keepdim=True)
-                print("dense representation shape using CLS representation {}".format(dense_representation.shape))
             output.append(dense_representation)
         output = torch.cat(output, dim=0)
         return output
