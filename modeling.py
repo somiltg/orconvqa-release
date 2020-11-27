@@ -762,8 +762,8 @@ class AlbertForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
         resume_download = kwargs.pop('resume_download', False)
         proxies = kwargs.pop('proxies', None)
         output_loading_info = kwargs.pop('output_loading_info', False)
-        use_pos_embedding = kwargs.get('use_positional_segment_embedding', True)
-        max_history_turns = kwargs.get('max_history_turns', 11)
+        use_pos_embedding = kwargs.pop('use_positional_segment_embedding')
+        max_history_turns = kwargs.pop('max_history_turns')
         print("use pos embedding {} max history turns {}".format(use_pos_embedding, max_history_turns))
 
         # Load config
