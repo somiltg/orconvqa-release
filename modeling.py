@@ -675,7 +675,7 @@ class AlbertForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
 
     def forward(self, query_input_ids=None, query_attention_mask=None, query_token_type_ids=None, 
                 passage_input_ids=None, passage_attention_mask=None, passage_token_type_ids=None, 
-                retrieval_label=None, query_rep=None, passage_rep=None):
+                retrieval_label=None, query_rep=None, passage_rep=None, use_fine_grained_attention=False):
         outputs = ()
         
         if query_input_ids is not None:
@@ -926,13 +926,12 @@ class AlbertForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
 
 
 class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositivePassage):
-    def __init__(self, config, use_fine_grained_attention=False):
+    def __init__(self, config):
         super(AlbertWithHAMForRetrieverOnlyPositivePassage, self).__init__(config)
         self.ham_linear_layer = nn.Linear(config.proj_size, 1)
-        self.use_fine_grained_attention = use_fine_grained_attention
         self.init_weights()
 
-    def preprocess_sub_batch(self, query_input_ids, query_attention_mask, query_token_type_ids):
+    def preprocess_sub_batch(self, query_input_ids, query_attention_mask, query_token_type_ids, use_fine_grained_attention=False):
         output = []
         print("use fine grained attention value {}".format(self.use_fine_grained_attention))
 
@@ -947,7 +946,7 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
             cls_weights = torch.squeeze(cls_weights, dim=-1)
             alphas = torch.nn.functional.softmax(cls_weights, dim=0)  # calculate probabilities for history attention scores.
             # token representation
-            if self.use_fine_grained_attention:
+            if use_fine_grained_attention:
                 alphas = alphas.view(alphas.shape[0], 1, 1)
                 query_sequence_tokens = query_outputs[0]
                 query_sequence_tokens = self.dropout(query_sequence_tokens)
@@ -964,11 +963,11 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
 
     def forward(self, query_input_ids=None, query_attention_mask=None, query_token_type_ids=None,
                 passage_input_ids=None, passage_attention_mask=None, passage_token_type_ids=None,
-                retrieval_label=None, query_rep=None, passage_rep=None, use_query_tokens=False):
+                retrieval_label=None, query_rep=None, passage_rep=None, use_fine_grained_attention=False):
         outputs = ()
 
         if query_input_ids is not None and len(query_input_ids) > 0:
-            dense_representation = self.preprocess_sub_batch(query_input_ids, query_attention_mask, query_token_type_ids, use_query_tokens)
+            dense_representation = self.preprocess_sub_batch(query_input_ids, query_attention_mask, query_token_type_ids, use_fine_grained_attention)
             outputs = (dense_representation, ) + outputs
 
         if passage_input_ids is not None:
