@@ -762,6 +762,8 @@ class AlbertForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
         resume_download = kwargs.pop('resume_download', False)
         proxies = kwargs.pop('proxies', None)
         output_loading_info = kwargs.pop('output_loading_info', False)
+        use_pos_embedding = kwargs.pop('use_positional_segment_embedding', True)
+        max_history_turns = kwargs.pop('max_history_turns', 2)
 
         # Load config
         if config is None:
@@ -888,9 +890,17 @@ class AlbertForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
                 state_dict = customized_state_dict.copy()
                 # print('using custome state dict', state_dict.keys())
 
-            if 'query_encoder.embeddings.token_type_embeddings.weight' in state_dict.keys():
-                state_dict['query_encoder.embeddings.token_type_embeddings.weight'] = torch.zeros(11, 128)
-                state_dict['passage_encoder.embeddings.token_type_embeddings.weight'] = torch.zeros(11, 128)
+            query_emb_key_name = 'query_encoder.embeddings.token_type_embeddings.weight'
+            passage_emb_key_name = 'passage_encoder.embeddings.token_type_embeddings.weight'
+            if use_pos_embedding and query_emb_key_name in state_dict.keys() and config is not None:
+                print("embedding size {}".format(config.embedding_size))
+                print("proj size {}".format(config.proj_size))
+                query_default_emb = state_dict[query_emb_key_name]
+                query_default_emb = torch.cat((query_default_emb, torch.zeros(max_history_turns-query_default_emb.shape[0], config.embedding_size)), dim=0)
+                print("query default emb shape {}".format(query_default_emb.shape))
+                state_dict[query_emb_key_name] = query_default_emb
+                if passage_emb_key_name in state_dict.keys():
+                    state_dict[passage_emb_key_name] = query_default_emb
 
             # print('modified state dict', state_dict.keys(), len(state_dict))
             if metadata is not None:
@@ -900,8 +910,6 @@ class AlbertForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
             # so we need to apply the function recursively.
             def load(module, prefix=''):
                 local_metadata = {} if metadata is None else metadata.get(prefix[:-1], {})
-                print("statedict query_encoder.token_type_embeddings.weights {}".format(state_dict['query_encoder.embeddings.token_type_embeddings.weight'].shape))
-                print("statedict passage_encoder {}".format(state_dict['passage_encoder.embeddings.token_type_embeddings.weight'].shape))
                 module._load_from_state_dict(
                     state_dict, prefix, local_metadata, True, missing_keys, unexpected_keys, error_msgs)
                 for name, child in module._modules.items():
