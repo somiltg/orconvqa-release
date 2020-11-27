@@ -926,42 +926,49 @@ class AlbertForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
 
 
 class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositivePassage):
-    def __init__(self, config):
+    def __init__(self, config, use_fine_grained_attention=False):
         super(AlbertWithHAMForRetrieverOnlyPositivePassage, self).__init__(config)
         self.ham_linear_layer = nn.Linear(config.proj_size, 1)
+        self.use_fine_grained_attention = use_fine_grained_attention
         self.init_weights()
 
     def preprocess_sub_batch(self, query_input_ids, query_attention_mask, query_token_type_ids):
         output = []
+        print("use fine grained attention value {}".format(self.use_fine_grained_attention))
+
         for i in range(len(query_input_ids)):
             query_outputs = self.query_encoder(query_input_ids[i],
                                                attention_mask=query_attention_mask[i],  # (11, 512)
                                                token_type_ids=query_token_type_ids[i])
             query_pooled_output = query_outputs[1]  # cls token (batch size, CLS representation size)
             query_pooled_output = self.dropout(query_pooled_output)  # apply dropout to CLS representation
-            query_rep = self.query_proj(
-                query_pooled_output)  # sub_batch_size, proj_size (number of queries, cls representation for each query)
+            query_rep = self.query_proj(query_pooled_output)  # sub_batch_size, proj_size (number of queries, cls representation for each query)
             cls_weights = self.ham_linear_layer(query_rep)  # cls weights: (sub_batch_size, 1)
             cls_weights = torch.squeeze(cls_weights, dim=-1)
-            # token representation
-            query_sequence_tokens = query_outputs[0]
-            query_sequence_tokens = self.dropout(query_sequence_tokens)
-            query_sequence_reps = self.query_proj(query_sequence_tokens)
             alphas = torch.nn.functional.softmax(cls_weights, dim=0)  # calculate probabilities for history attention scores.
-            alphas = alphas.view(alphas.shape[0], 1, 1)
-            dense_representation = torch.sum(query_sequence_reps * alphas, dim=0)
-            dense_representation = torch.mean(dense_representation, dim=0, keepdim=True)
+            # token representation
+            if self.use_fine_grained_attention:
+                alphas = alphas.view(alphas.shape[0], 1, 1)
+                query_sequence_tokens = query_outputs[0]
+                query_sequence_tokens = self.dropout(query_sequence_tokens)
+                query_sequence_reps = self.query_proj(query_sequence_tokens)
+                dense_representation = torch.sum(query_sequence_reps * alphas, dim=0)
+                dense_representation = torch.mean(dense_representation, dim=0, keepdim=True)
+            else:
+                alphas = alphas.view(alphas.shape[0], 1)
+                dense_representation = torch.sum(query_rep * alphas, dim=0, keepdim=True)
+                print("dense representation shape using CLS representation {}".format(dense_representation.shape))
             output.append(dense_representation)
         output = torch.cat(output, dim=0)
         return output
 
     def forward(self, query_input_ids=None, query_attention_mask=None, query_token_type_ids=None,
                 passage_input_ids=None, passage_attention_mask=None, passage_token_type_ids=None,
-                retrieval_label=None, query_rep=None, passage_rep=None):
+                retrieval_label=None, query_rep=None, passage_rep=None, use_query_tokens=False):
         outputs = ()
 
         if query_input_ids is not None and len(query_input_ids) > 0:
-            dense_representation = self.preprocess_sub_batch(query_input_ids, query_attention_mask, query_token_type_ids)
+            dense_representation = self.preprocess_sub_batch(query_input_ids, query_attention_mask, query_token_type_ids, use_query_tokens)
             outputs = (dense_representation, ) + outputs
 
         if passage_input_ids is not None:

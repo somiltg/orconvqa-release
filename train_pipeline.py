@@ -731,6 +731,8 @@ parser.add_argument("--use_rerank_prob", default=True, type=str2bool,
 parser.add_argument("--enable_retrieval_history_selection", default=False, type=str2bool, help="run history based attention model or not for retriever")
 parser.add_argument("--max_considered_history_turns", default=11, type=int, help="we only consider k history turns "
                                                                                      "that immediately proceed the current turn, when generating preprocessed features,")
+parser.add_argument("--use_fine_grained_attention", default=False, type=str2bool, help="whether use fine grained attention for calculating history attention scores "
+                                                                                       "for retriever or use cls representation")
 
 args, unknown = parser.parse_known_args()
 
@@ -785,7 +787,8 @@ model = Pipeline()
 
 HAM_BASED_MODEL_CLASSES = {
     'reader': (BertConfig, BertForOrconvqaGlobal, BertTokenizer),
-    'retriever': (AlbertConfig(type_vocab_size=args.max_considered_history_turns), AlbertWithHAMForRetrieverOnlyPositivePassage, AlbertTokenizer),
+    'retriever': (AlbertConfig(type_vocab_size=args.max_considered_history_turns),
+                  AlbertWithHAMForRetrieverOnlyPositivePassage(use_fine_grained_attention=args.use_fine_grained_attention), AlbertTokenizer),
 }
 args.retriever_model_type = args.retriever_model_type.lower()
 
