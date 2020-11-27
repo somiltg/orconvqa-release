@@ -944,7 +944,7 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
             cls_weights = torch.squeeze(cls_weights, dim=-1)
             alphas = torch.nn.functional.softmax(cls_weights, dim=0)  # calculate probabilities for history attention scores.
             if not use_soft_attention_weights:
-                alphas = alphas*0 + (1/cls_weights.shape[0])
+                alphas = torch.add(torch.mul(alphas, 0), 1/(query_rep.shape[0]))
 
             # token representation
             if use_fine_grained_attention:
