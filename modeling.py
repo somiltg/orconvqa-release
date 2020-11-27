@@ -965,11 +965,12 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
 
     def forward(self, query_input_ids=None, query_attention_mask=None, query_token_type_ids=None,
                 passage_input_ids=None, passage_attention_mask=None, passage_token_type_ids=None,
-                retrieval_label=None, query_rep=None, passage_rep=None, use_fine_grained_attention=False):
+                retrieval_label=None, query_rep=None, passage_rep=None, use_fine_grained_attention=False, use_soft_attention_weights=True):
         outputs = ()
 
         if query_input_ids is not None and len(query_input_ids) > 0:
-            dense_representation = self.preprocess_sub_batch(query_input_ids, query_attention_mask, query_token_type_ids, use_fine_grained_attention)
+            dense_representation = self.preprocess_sub_batch(query_input_ids, query_attention_mask, query_token_type_ids,
+                                                             use_fine_grained_attention, use_soft_attention_weights)
             outputs = (dense_representation, ) + outputs
 
         if passage_input_ids is not None:
@@ -993,7 +994,8 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
 
         if query_input_ids is not None and len(query_input_ids) > 0 and passage_rep is not None and retrieval_label is not None and len(
                 passage_rep.size()) == 3:
-            dense_representation = self.preprocess_sub_batch(query_input_ids, query_attention_mask, query_token_type_ids)
+            dense_representation = self.preprocess_sub_batch(query_input_ids, query_attention_mask, query_token_type_ids,
+                                                             use_fine_grained_attention, use_soft_attention_weights)
             batch_size, num_blocks, proj_size = passage_rep.size()
             query_rep = dense_representation.unsqueeze(-1)  # query_rep (batch_size, proj_size, 1)
             query_rep = query_rep.expand(batch_size, self.proj_size, num_blocks)  # batch_size, proj_size, num_blocks)
