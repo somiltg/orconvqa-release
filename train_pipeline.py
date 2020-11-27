@@ -730,11 +730,21 @@ parser.add_argument("--top_k_for_reader", default=5, type=int,
                     help="update the reader with top k passages")
 parser.add_argument("--use_rerank_prob", default=True, type=str2bool,
                     help="include rerank probs in final answer ranking")
-parser.add_argument("--enable_retrieval_history_selection", default=False, type=str2bool, help="run history based attention model or not for retriever")
-parser.add_argument("--max_considered_history_turns", default=11, type=int, help="we only consider k history turns "
-                                                                                     "that immediately proceed the current turn, when generating preprocessed features,")
-parser.add_argument("--use_fine_grained_attention", default=False, type=str2bool, help="whether use fine grained attention for calculating history attention scores "
-                                                                                       "for retriever or use cls representation")
+parser.add_argument("--enable_retrieval_history_selection", default=False, type=str2bool,
+                    help="run history based attention model or not for retriever")
+parser.add_argument("--max_considered_history_turns", default=11, type=int,
+                    help="we only consider k history turns that immediately proceed the current turn,"
+                         " when generating preprocessed features,")
+parser.add_argument("--use_fine_grained_attention", default=False, type=str2bool,
+                    help="whether use fine grained attention for calculating history attention scores "
+                         "for retriever or use cls representation")
+parser.add_argument("--use_positional_segment_embedding", default=True, type=str2bool,
+                    help="whether to use different segment embedding for each history question turn "
+                         "in history attention selection based retriever")
+parser.add_argument("--use_soft_attention_weights", default=True, type=str2bool,
+                    help="whether to use soft attention during history selection for retriever. "
+                         "Setting it to false would let equal weightage to all the turns.")
+
 
 args, unknown = parser.parse_known_args()
 

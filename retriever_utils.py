@@ -91,7 +91,8 @@ class RetrieverDataset(Dataset):
                  is_pretraining=False, given_query=False,
                  given_passage=False, only_positive_passage=True,
                  include_first_for_retriever=False,
-                 history_attention_selection_enabled_for_retriever=False):
+                 history_attention_selection_enabled_for_retriever=False,
+                 use_positional_segment_embedding=True):
         self._filename = filename
         self._tokenizer = tokenizer
         self._load_small = load_small
@@ -101,6 +102,7 @@ class RetrieverDataset(Dataset):
         self._prepend_history_questions = prepend_history_questions
         self._prepend_history_answers = prepend_history_answers
         self._history_attention_selection_enabled_for_retriever = history_attention_selection_enabled_for_retriever
+        self._use_positional_segment_embedding = use_positional_segment_embedding
 
         # if given query:
             # if pretraining: using rewrite as question
@@ -310,7 +312,8 @@ def retriever_convert_example_to_feature(example, tokenizer,
                                       pad_on_left=False,
                                       pad_token=0,
                                       pad_token_segment_id=0,
-                                      mask_padding_with_zero=True):
+                                      mask_padding_with_zero=True,
+                                      use_positional_segment_embedding=True):
     """
     Loads a data file into a list of ``InputFeatures``
     Args:
@@ -322,6 +325,7 @@ def retriever_convert_example_to_feature(example, tokenizer,
         mask_padding_with_zero: If set to ``True``, the attention mask will be filled by ``1`` for actual values
             and by ``0`` for padded values. If set to ``False``, inverts it (``1`` for padded values, ``0`` for
             actual values)
+        use_positional_segment_embedding: Whether to encode positional_segment_embedding
     Returns:
         If the ``examples`` input is a ``tf.data.Dataset``, will return a ``tf.data.Dataset``
         containing the task-specific features. If the input is a list of ``InputExamples``, will return
@@ -341,7 +345,7 @@ def retriever_convert_example_to_feature(example, tokenizer,
     attention_mask = [1 if mask_padding_with_zero else 0] * len(input_ids)
 
     # Token Ids should encode conversational position information i.e. use a different embedding per turn.
-    if example.sub_guid is not None:
+    if example.sub_guid is not None and use_positional_segment_embedding:
         token_type_ids = [example.sub_guid*item for item in token_type_ids]
 
     # Zero-pad up to the sequence length.
