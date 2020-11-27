@@ -827,14 +827,12 @@ else:
 
 logger.info("will load pretrained retriever")
 # load pretrained retriever
-custom_config_for_retriever = {'config': retriever_config,
-                             'use_positional_segment_embedding': args.use_positional_segment_embedding,
-                             'max_history_turns': args.max_considered_history_turns}
 
 retriever_tokenizer = retriever_tokenizer_class.from_pretrained(args.retrieve_tokenizer_dir)
 retriever_model = retriever_model_class.from_pretrained(args.retrieve_checkpoint,
                                                         force_download=True,
-                                                        **custom_config_for_retriever)
+                                                        config=retriever_config,
+                                                        use_positional_segment_embedding=args.use_positional_segment_embedding)
 
 model.retriever = retriever_model
 # do not need and do not tune passage encoder
@@ -990,7 +988,8 @@ if args.do_train and (args.local_rank == -1 or torch.distributed.get_rank() == 0
     # Load a trained model and vocabulary that you have fine-tuned
     model = Pipeline()
     model.retriever = retriever_model_class.from_pretrained(
-        final_retriever_model_dir, force_download=True, **custom_config_for_retriever)
+        final_retriever_model_dir, force_download=True, config=retriever_config,
+                                                        use_positional_segment_embedding=args.use_positional_segment_embedding)
     model.retriever.passage_encoder = None
     model.retriever.passage_proj = None
 
@@ -1029,7 +1028,8 @@ if args.do_eval and args.local_rank in [-1, 0]:
         print(global_step, 'global_step')
         model = Pipeline()
         model.retriever = retriever_model_class.from_pretrained(
-            os.path.join(checkpoint, 'retriever'), force_download=True, **custom_config_for_retriever)
+            os.path.join(checkpoint, 'retriever'), force_download=True, config=retriever_config,
+                                                        use_positional_segment_embedding=args.use_positional_segment_embedding)
         model.retriever.passage_encoder = None
         model.retriever.passage_proj = None
         model.reader = reader_model_class.from_pretrained(
