@@ -189,7 +189,8 @@ class RetrieverDataset(Dataset):
                                                                  text_b=augmented_turn_text,
                                                                  sub_guid=len(history) - turn_num)
                             turn_query_feature = retriever_convert_example_to_feature(turn_example, self._tokenizer,
-                                                                                 max_length=self._query_max_seq_length)
+                                                                                      max_length=self._query_max_seq_length,
+                                                                                      use_positional_segment_embedding=self._use_positional_segment_embedding)
                             input_ids.append(turn_query_feature.input_ids)
                             token_type_ids.append(turn_query_feature.token_type_ids)
                             attention_mask.append(turn_query_feature.attention_mask)

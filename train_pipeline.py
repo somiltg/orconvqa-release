@@ -341,7 +341,8 @@ def evaluate(args, model, retriever_tokenizer, reader_tokenizer, prefix=""):
                            given_query=True,
                            given_passage=False,
                            include_first_for_retriever=args.include_first_for_retriever,
-                           history_attention_selection_enabled_for_retriever=args.enable_retrieval_history_selection)
+                           history_attention_selection_enabled_for_retriever=args.enable_retrieval_history_selection,
+                           use_positional_segment_embedding=args.use_positional_segment_embedding)
     if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:
         os.makedirs(args.output_dir)
     predict_dir = os.path.join(args.output_dir, 'predictions')
@@ -927,7 +928,8 @@ if args.do_train:
                                  given_query=True,
                                  given_passage=False,
                                  include_first_for_retriever=args.include_first_for_retriever,
-                                 history_attention_selection_enabled_for_retriever=args.enable_retrieval_history_selection)
+                                 history_attention_selection_enabled_for_retriever=args.enable_retrieval_history_selection,
+                                 use_positional_segment_embedding=args.use_positional_segment_embedding)
     global_step, tr_loss = train(args, train_dataset, model, retriever_tokenizer, reader_tokenizer)
     logger.info(" global_step = %s, average loss = %s",
                 global_step, tr_loss)
