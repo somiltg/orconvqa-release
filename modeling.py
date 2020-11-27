@@ -560,6 +560,8 @@ class BertForRetriever(BertPreTrainedModel):
                 module._load_from_state_dict(
                     state_dict, prefix, local_metadata, True, missing_keys, unexpected_keys, error_msgs)
                 for name, child in module._modules.items():
+                    if name == 'query_encoder.embeddings.token_type_embeddings.weight':
+                        print("name child {}".format(child))
                     if child is not None:
                         load(child, prefix + name + '.')
 
@@ -897,6 +899,7 @@ class AlbertForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
                 module._load_from_state_dict(
                     state_dict, prefix, local_metadata, True, missing_keys, unexpected_keys, error_msgs)
                 for name, child in module._modules.items():
+                    print("name {} child {}".format(name, child))
                     if child is not None:
                         load(child, prefix + name + '.')
 
