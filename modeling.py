@@ -675,7 +675,7 @@ class AlbertForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
 
     def forward(self, query_input_ids=None, query_attention_mask=None, query_token_type_ids=None, 
                 passage_input_ids=None, passage_attention_mask=None, passage_token_type_ids=None, 
-                retrieval_label=None, query_rep=None, passage_rep=None, use_fine_grained_attention=False):
+                retrieval_label=None, query_rep=None, passage_rep=None, use_fine_grained_attention=False, use_soft_attention_weights=False):
         outputs = ()
         
         if query_input_ids is not None:
@@ -931,7 +931,7 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
         self.ham_linear_layer = nn.Linear(config.proj_size, 1)
         self.init_weights()
 
-    def preprocess_sub_batch(self, query_input_ids, query_attention_mask, query_token_type_ids, use_fine_grained_attention=False):
+    def preprocess_sub_batch(self, query_input_ids, query_attention_mask, query_token_type_ids, use_fine_grained_attention=False, use_soft_attention_weights=True):
         output = []
         for i in range(len(query_input_ids)):
             query_outputs = self.query_encoder(query_input_ids[i],
@@ -940,9 +940,14 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
             query_pooled_output = query_outputs[1]  # cls token (batch size, CLS representation size)
             query_pooled_output = self.dropout(query_pooled_output)  # apply dropout to CLS representation
             query_rep = self.query_proj(query_pooled_output)  # sub_batch_size, proj_size (number of queries, cls representation for each query)
-            cls_weights = self.ham_linear_layer(query_rep)  # cls weights: (sub_batch_size, 1)
-            cls_weights = torch.squeeze(cls_weights, dim=-1)
-            alphas = torch.nn.functional.softmax(cls_weights, dim=0)  # calculate probabilities for history attention scores.
+            if use_soft_attention_weights:
+                cls_weights = self.ham_linear_layer(query_rep)  # cls weights: (sub_batch_size, 1)
+                cls_weights = torch.squeeze(cls_weights, dim=-1)
+                alphas = torch.nn.functional.softmax(cls_weights, dim=0)  # calculate probabilities for history attention scores.
+            else:
+                val = float(1/query_rep.shape[0])
+                alphas = torch.tensor([val]*query_rep.shape[0])
+
             # token representation
             if use_fine_grained_attention:
                 alphas = alphas.view(alphas.shape[0], 1, 1)
