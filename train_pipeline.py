@@ -804,8 +804,7 @@ model = Pipeline()
 
 HAM_BASED_MODEL_CLASSES = {
     'reader': (BertConfig, BertForOrconvqaGlobal, BertTokenizer),
-    'retriever': (AlbertConfig(type_vocab_size=args.max_considered_history_turns),
-                  AlbertWithHAMForRetrieverOnlyPositivePassage, AlbertTokenizer),
+    'retriever': (AlbertConfig, AlbertWithHAMForRetrieverOnlyPositivePassage, AlbertTokenizer),
 }
 args.retriever_model_type = args.retriever_model_type.lower()
 
@@ -815,12 +814,15 @@ logger.info("retriever model")
 if args.enable_retrieval_history_selection:
     logger.info("Using HAM based retriever model")
     retriever_config_class, retriever_model_class, retriever_tokenizer_class = HAM_BASED_MODEL_CLASSES['retriever']
+    logger.info("take pretrained model")
+    retriever_config = retriever_config_class.from_pretrained(args.retrieve_checkpoint,
+                                                              {"type_vocab_size": args.max_considered_history_turns})
+    assert retriever_config.type_vocab_size == args.max_considered_history_turns
 else:
     logger.info("Using prepending history based retriever model")
     retriever_config_class, retriever_model_class, retriever_tokenizer_class = MODEL_CLASSES['retriever']
-
-logger.info("take pretrained model")
-retriever_config = retriever_config_class.from_pretrained(args.retrieve_checkpoint)
+    logger.info("take pretrained model")
+    retriever_config = retriever_config_class.from_pretrained(args.retrieve_checkpoint)
 
 logger.info("will load pretrained retriever")
 # load pretrained retriever
