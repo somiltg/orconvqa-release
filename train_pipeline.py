@@ -815,8 +815,7 @@ if args.enable_retrieval_history_selection:
     logger.info("Using HAM based retriever model")
     retriever_config_class, retriever_model_class, retriever_tokenizer_class = HAM_BASED_MODEL_CLASSES['retriever']
     logger.info("take pretrained model")
-    retriever_config = retriever_config_class.from_pretrained(args.retrieve_checkpoint,
-                                                              {"type_vocab_size": args.max_considered_history_turns})
+    retriever_config = retriever_config_class.from_pretrained(args.retrieve_checkpoint, **{"type_vocab_size": args.max_considered_history_turns})
     assert retriever_config.type_vocab_size == args.max_considered_history_turns
 else:
     logger.info("Using prepending history based retriever model")
