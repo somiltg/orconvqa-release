@@ -887,7 +887,11 @@ class AlbertForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
                 # loading from original bert model
                 state_dict = customized_state_dict.copy()
                 # print('using custome state dict', state_dict.keys())
-            
+
+            print(state_dict.keys())
+            if 'query_encoder.token_type_embeddings' in state_dict:
+                print(state_dict['query_encoder.token_type_embeddings'])
+
             # print('modified state dict', state_dict.keys(), len(state_dict))
             if metadata is not None:
                 state_dict._metadata = metadata
@@ -899,7 +903,6 @@ class AlbertForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
                 module._load_from_state_dict(
                     state_dict, prefix, local_metadata, True, missing_keys, unexpected_keys, error_msgs)
                 for name, child in module._modules.items():
-                    print("name {} child {}".format(name, child))
                     if child is not None:
                         load(child, prefix + name + '.')
 
