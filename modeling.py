@@ -933,8 +933,6 @@ class AlbertWithHAMForRetrieverOnlyPositivePassage(AlbertForRetrieverOnlyPositiv
 
     def preprocess_sub_batch(self, query_input_ids, query_attention_mask, query_token_type_ids, use_fine_grained_attention=False):
         output = []
-        print("use fine grained attention value {}".format(self.use_fine_grained_attention))
-
         for i in range(len(query_input_ids)):
             query_outputs = self.query_encoder(query_input_ids[i],
                                                attention_mask=query_attention_mask[i],  # (11, 512)
