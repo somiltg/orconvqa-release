@@ -889,8 +889,8 @@ class AlbertForRetrieverOnlyPositivePassage(AlbertPreTrainedModel):
                 # print('using custome state dict', state_dict.keys())
 
             if 'query_encoder.embeddings.token_type_embeddings.weight' in state_dict.keys():
-                print(state_dict['query_encoder.embeddings.token_type_embeddings.weight'].shape)
-                #state_dict['query_encoder.token_type_embeddings.weights'] = torch.zeros(11, 128)
+                state_dict['query_encoder.token_type_embeddings.weights'] = torch.zeros(11, 128)
+                state_dict['passage_encoder.token_type_embeddings.weights'] = torch.zeros(11, 128)
 
             # print('modified state dict', state_dict.keys(), len(state_dict))
             if metadata is not None:
