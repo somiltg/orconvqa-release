@@ -1009,9 +1009,9 @@ if args.do_train and (args.local_rank == -1 or torch.distributed.get_rank() == 0
 
 
 # Evaluation - we can ask to evaluate all the checkpoints (sub-directories) in a directory
-
+# We use retriever recall as selection metric
 results = {}
-max_f1 = 0.0
+max_retriever_recall = 0.0
 best_metrics = {}
 if args.do_eval and args.local_rank in [-1, 0]:
     retriever_tokenizer = retriever_tokenizer_class.from_pretrained(
@@ -1042,8 +1042,8 @@ if args.do_eval and args.local_rank in [-1, 0]:
         # Evaluate
         result = evaluate(args, model, retriever_tokenizer,
                           reader_tokenizer, prefix=global_step)
-        if result['f1'] > max_f1:
-            max_f1 = result['f1']
+        if result['retriever_recall'] > max_retriever_recall:
+            max_retriever_recall = result['retriever_recall']
             best_metrics = copy(result)
             best_metrics['global_step'] = global_step
 
